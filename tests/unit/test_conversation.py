@@ -1,7 +1,6 @@
 """Tests for conversation manager."""
 
 from datetime import datetime, timedelta
-from unittest.mock import patch
 
 from bot.domain.models import Message, Role
 from bot.services.conversation import ConversationManager

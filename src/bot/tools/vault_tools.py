@@ -9,7 +9,10 @@ def register_vault_tools(registry: ToolRegistry, vault: VaultService) -> None:
 
     registry.register(
         name="search_vault",
-        description="Search for notes in the Obsidian vault by keyword. Returns matching note paths and snippets.",
+        description=(
+            "Search for notes in the Obsidian vault by keyword. "
+            "Returns matching note paths and snippets."
+        ),
         parameters={
             "type": "object",
             "properties": {
@@ -35,7 +38,7 @@ def register_vault_tools(registry: ToolRegistry, vault: VaultService) -> None:
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Relative path to the note (e.g., 'notes/python.md')",
+                    "description": "Relative path to the note",
                 },
             },
             "required": ["path"],
@@ -67,7 +70,7 @@ def register_vault_tools(registry: ToolRegistry, vault: VaultService) -> None:
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Relative path for the new note (e.g., 'notes/new-topic.md')",
+                    "description": "Relative path for the new note",
                 },
                 "content": {
                     "type": "string",

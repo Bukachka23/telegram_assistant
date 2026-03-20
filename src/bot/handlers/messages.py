@@ -1,6 +1,5 @@
 """Message handler: free-text → LLM pipeline with streaming via sendMessageDraft."""
 
-import asyncio
 import logging
 import time
 
@@ -46,7 +45,7 @@ def setup_messages(
         except LLMError as e:
             logger.error("LLM error for user %d: %s", user_id, e)
             await message.answer(f"⚠️ LLM error: {e}")
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error for user %d", user_id)
             await message.answer("⚠️ Something went wrong. Please try again.")
 
@@ -74,11 +73,12 @@ async def _stream_response(
         now = time.monotonic()
 
         # Send draft if enough time/text has accumulated
+        enough_time = now - last_draft_time >= interval
+        enough_text = len(accumulated) >= min_chunk_chars
         should_send = (
-            now - last_draft_time >= interval
-            and len(accumulated) - (0 if not draft_sent else len(accumulated) - len(chunk))
-            >= min_chunk_chars
-        ) or not draft_sent and len(accumulated) >= min_chunk_chars
+            (enough_time and enough_text)
+            or (not draft_sent and enough_text)
+        )
 
         if should_send:
             try:

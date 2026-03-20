@@ -1,7 +1,7 @@
 """Channel monitoring and on-demand query service."""
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from telethon import TelegramClient
 
@@ -40,8 +40,10 @@ class ChannelService:
             lines.append(f"[{ts}] {msg.text[:500]}")
 
         if not lines:
-            return f"No messages found in {channel}" + (f" matching '{query}'" if query else "")
-        return f"Messages from {channel} ({len(lines)}):\n\n" + "\n\n".join(lines)
+            suffix = f" matching '{query}'" if query else ""
+            return f"No messages found in {channel}{suffix}"
+        header = f"Messages from {channel} ({len(lines)}):"
+        return f"{header}\n\n" + "\n\n".join(lines)
 
     async def search_channel(
         self,
@@ -52,7 +54,7 @@ class ChannelService:
     ) -> str:
         """Search a channel for messages matching a query within a time window."""
         limit = min(limit, 100)
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
 
         try:
             entity = await self._client.get_entity(channel)
@@ -72,5 +74,9 @@ class ChannelService:
             lines.append(f"[{ts}] {msg.text[:500]}")
 
         if not lines:
-            return f"No messages in {channel} matching '{query}' (last {days} days)"
-        return f"Search results for '{query}' in {channel} ({len(lines)}):\n\n" + "\n\n".join(lines)
+            return (
+                f"No messages in {channel} matching "
+                f"'{query}' (last {days} days)"
+            )
+        header = f"Search results for '{query}' in {channel} ({len(lines)}):"
+        return f"{header}\n\n" + "\n\n".join(lines)

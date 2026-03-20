@@ -31,7 +31,8 @@ class VaultService:
                 continue
             if query_lower in content.lower():
                 rel = str(md_file.relative_to(self._root))
-                results.append(Note(path=rel, content=self._snippet(content, query_lower)))
+                snippet = self._snippet(content, query_lower)
+                results.append(Note(path=rel, content=snippet))
                 if len(results) >= max_results:
                     break
 

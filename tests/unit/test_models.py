@@ -22,7 +22,7 @@ class TestMessage:
         msg = Message(role=Role.USER, content="hello")
         try:
             msg.content = "changed"
-            assert False, "Should be frozen"
+            raise AssertionError("Should be frozen")
         except AttributeError:
             pass
 

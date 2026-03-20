@@ -5,9 +5,8 @@ import logging
 from collections.abc import AsyncIterator, Callable, Coroutine
 from typing import Any
 
-from bot.domain.exceptions import LLMError
 from bot.domain.models import Message, Role, ToolCall, ToolResult
-from bot.infrastructure.openrouter import OpenRouterClient, StreamDelta
+from bot.infrastructure.openrouter import OpenRouterClient
 from bot.services.conversation import ConversationManager
 from bot.tools.registry import ToolRegistry
 
@@ -40,7 +39,7 @@ class LLMService:
         self._async_executors: dict[str, AsyncToolExecutor] = {}
 
     def register_async_tool(self, name: str, executor: AsyncToolExecutor) -> None:
-        """Register an async executor for tools that need await (e.g., channel tools)."""
+        """Register an async executor for tools that need await."""
         self._async_executors[name] = executor
 
     async def stream_response(self, user_id: int, user_text: str) -> AsyncIterator[str]:
@@ -94,7 +93,11 @@ class LLMService:
             logger.warning("LLM returned empty response for user %d", user_id)
             return
 
-        logger.error("Max tool rounds (%d) exceeded for user %d", _MAX_TOOL_ROUNDS, user_id)
+        logger.error(
+            "Max tool rounds (%d) exceeded for user %d",
+            _MAX_TOOL_ROUNDS,
+            user_id,
+        )
         yield "⚠️ Reached maximum tool call depth. Please try a simpler request."
 
     async def _execute_tool_calls(

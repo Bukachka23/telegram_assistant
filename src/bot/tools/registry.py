@@ -1,7 +1,7 @@
 """Tool registry: maps tool names to callables and OpenRouter schemas."""
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 

@@ -1,11 +1,10 @@
 """Tests for OpenRouter client."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from bot.domain.exceptions import LLMError
 from bot.infrastructure.openrouter import OpenRouterClient, StreamDelta
 
 

@@ -1,11 +1,11 @@
 """Tests for LLM orchestration service."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
-from bot.domain.models import Message, Role, ToolCall
+from bot.domain.models import ToolCall
 from bot.infrastructure.openrouter import OpenRouterClient, StreamDelta
 from bot.services.conversation import ConversationManager
 from bot.services.llm import LLMService
