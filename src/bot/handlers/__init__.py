@@ -1,10 +1,13 @@
 """Handlers package — auth middleware and router setup."""
 
+import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, Update
+
+logger = logging.getLogger(__name__)
 
 
 class OwnerOnlyMiddleware(BaseMiddleware):
@@ -19,12 +22,21 @@ class OwnerOnlyMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        # Extract user from the update
         if isinstance(event, Update):
-            message = event.message or event.callback_query
-            if message:
-                user = getattr(message, "from_user", None)
-                if user and user.id != self._owner_id:
-                    return None  # Silently ignore
+            user_id = self._extract_user_id(event)
+            if user_id is not None and user_id != self._owner_id:
+                logger.debug("Ignoring update from user %d", user_id)
+                return None
 
         return await handler(event, data)
+
+    @staticmethod
+    def _extract_user_id(update: Update) -> int | None:
+        """Extract user ID from any update type."""
+        for source in (update.message, update.callback_query,
+                       update.edited_message, update.inline_query):
+            if source:
+                user = getattr(source, "from_user", None)
+                if user:
+                    return user.id
+        return None
