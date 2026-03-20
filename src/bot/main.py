@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import sys
+from pathlib import Path
 
 from aiogram import Bot, Dispatcher
 
@@ -29,6 +30,33 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+async def _try_connect_telethon(api_id: int, api_hash: str):
+    """Try to connect Telethon using an existing session. Returns client or None."""
+    session_path = Path("userbot.session")
+    if not session_path.exists():
+        logger.warning(
+            "No Telethon session found. "
+            "Run 'python scripts/auth_telethon.py' first for channel features."
+        )
+        return None
+
+    client = create_telethon_client(api_id=api_id, api_hash=api_hash)
+    try:
+        await client.connect()
+        if not await client.is_user_authorized():
+            logger.warning(
+                "Telethon session expired. "
+                "Run 'python scripts/auth_telethon.py' to re-authenticate."
+            )
+            await client.disconnect()
+            return None
+        logger.info("Telethon userbot connected")
+        return client
+    except Exception as e:
+        logger.warning("Telethon connection failed: %s", e)
+        return None
+
+
 async def run() -> None:
     """Initialize all components and start both clients."""
     settings = load_settings()
@@ -44,12 +72,11 @@ async def run() -> None:
     # --- Infrastructure ---
     openrouter = OpenRouterClient(api_key=settings.openrouter_api_key)
 
-    telethon_available = bool(settings.telegram_api_id and settings.telegram_api_hash)
+    # Telethon: connect only if session exists (non-blocking)
     userbot = None
-    if telethon_available:
-        userbot = create_telethon_client(
-            api_id=settings.telegram_api_id,
-            api_hash=settings.telegram_api_hash,
+    if settings.telegram_api_id and settings.telegram_api_hash:
+        userbot = await _try_connect_telethon(
+            settings.telegram_api_id, settings.telegram_api_hash
         )
 
     # --- Services ---
@@ -119,13 +146,10 @@ async def run() -> None:
     logger.info("Starting Telegram Assistant Bot...")
     logger.info("Model: %s", settings.llm.default_model)
     logger.info("Vault: %s", settings.vault.path)
+    logger.info("Telethon: %s", "connected" if userbot else "disabled")
     logger.info("Monitors: %d channels", len(settings.channels.monitor))
 
     try:
-        if userbot:
-            await userbot.start()
-            logger.info("Telethon userbot connected")
-
         await dp.start_polling(bot)
     finally:
         await openrouter.close()
