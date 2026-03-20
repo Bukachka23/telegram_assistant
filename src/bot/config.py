@@ -1,5 +1,6 @@
 """Configuration loading from .env and config.yaml."""
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,7 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_CWD = Path.cwd()
 
 
 class LLMConfig(BaseModel):
@@ -65,13 +67,29 @@ def _load_yaml(path: Path) -> dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
+def _find_file(name: str) -> Path:
+    """Find a config file in CWD or project root."""
+    for base in (_CWD, _PROJECT_ROOT):
+        path = base / name
+        if path.exists():
+            return path
+    return _CWD / name  # Default to CWD even if missing
+
+
 def load_settings(
     yaml_path: Path | None = None,
     env_path: Path | None = None,
 ) -> Settings:
     """Load settings from .env (secrets) + config.yaml (settings)."""
-    yaml_path = yaml_path or _PROJECT_ROOT / "config.yaml"
+    yaml_path = yaml_path or _find_file("config.yaml")
     yaml_data = _load_yaml(yaml_path)
+
+    # Allow VAULT_PATH env var to override yaml config (for Docker)
+    vault_override = os.environ.get("VAULT_PATH")
+    if vault_override:
+        vault_cfg = yaml_data.get("vault", {})
+        vault_cfg["path"] = vault_override
+        yaml_data["vault"] = vault_cfg
 
     kwargs: dict[str, Any] = {}
     if env_path:

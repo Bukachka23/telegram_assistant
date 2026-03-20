@@ -1,0 +1,35 @@
+services:
+  bot:
+    build: .
+    container_name: telegram-assistant
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    volumes:
+      # Bot config
+      - ./config.yaml:/app/config.yaml:ro
+
+      # Telethon session (persistent, read-write)
+      - ./data:/app/data
+
+      # Obsidian vault (synced via Syncthing on host)
+      - ${VAULT_PATH:-/home/pi/obsidian-vault}:/vault:ro
+
+    environment:
+      # Override vault path inside container
+      - VAULT_PATH=/vault
+
+    # Healthcheck: process is running
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

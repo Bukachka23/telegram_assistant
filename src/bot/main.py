@@ -30,17 +30,28 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _find_session() -> Path | None:
+    """Find userbot.session in data/ or current directory."""
+    for candidate in (Path("data/userbot.session"), Path("userbot.session")):
+        if candidate.exists():
+            return candidate
+    return None
+
+
 async def _try_connect_telethon(api_id: int, api_hash: str):
     """Try to connect Telethon using an existing session. Returns client or None."""
-    session_path = Path("userbot.session")
-    if not session_path.exists():
+    session = _find_session()
+    if not session:
         logger.warning(
             "No Telethon session found. "
             "Run 'python scripts/auth_telethon.py' first for channel features."
         )
         return None
 
-    client = create_telethon_client(api_id=api_id, api_hash=api_hash)
+    session_name = str(session.with_suffix(""))
+    client = create_telethon_client(
+        api_id=api_id, api_hash=api_hash, session_name=session_name
+    )
     try:
         await client.connect()
         if not await client.is_user_authorized():
