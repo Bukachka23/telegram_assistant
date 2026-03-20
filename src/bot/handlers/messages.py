@@ -4,9 +4,11 @@ import logging
 import time
 
 from aiogram import Bot, Router
+from aiogram.enums import ParseMode
 from aiogram.types import Message
 
 from bot.domain.exceptions import LLMError
+from bot.services.formatting import md_to_tg_html
 from bot.services.llm import LLMService
 
 logger = logging.getLogger(__name__)
@@ -56,6 +58,38 @@ def setup_messages(
     return router
 
 
+async def _send_draft(
+    bot: Bot, chat_id: int, draft_id: int, text: str
+) -> bool:
+    """Send a streaming draft. Returns False if unsupported."""
+    try:
+        await bot.send_message_draft(
+            chat_id=chat_id,
+            draft_id=draft_id,
+            text=_clip(text),
+        )
+        return True
+    except Exception as e:
+        logger.debug("sendMessageDraft failed: %s", e)
+        return False
+
+
+async def _send_formatted(
+    bot: Bot, chat_id: int, text: str
+) -> None:
+    """Send final message with HTML formatting, fallback to plain."""
+    try:
+        html = md_to_tg_html(text)
+        await bot.send_message(
+            chat_id=chat_id,
+            text=_clip(html),
+            parse_mode=ParseMode.HTML,
+        )
+    except Exception:
+        logger.debug("HTML send failed, falling back to plain text")
+        await bot.send_message(chat_id=chat_id, text=_clip(text))
+
+
 async def _stream_response(
     bot: Bot,
     chat_id: int,
@@ -64,21 +98,15 @@ async def _stream_response(
     user_text: str,
     draft_interval_ms: int,
 ) -> None:
-    """Stream LLM response to user via sendMessageDraft, then finalize."""
+    """Stream LLM response via sendMessageDraft, then send formatted final."""
     draft_id = int(time.time() * 1000) % 2_147_483_647 or 1
     interval = draft_interval_ms / 1000.0
     accumulated = ""
     last_send = 0.0
     use_drafts = True
 
-    # Immediate feedback: show "thinking" before LLM responds
-    try:
-        await bot.send_message_draft(
-            chat_id=chat_id, draft_id=draft_id, text="Thinking…"
-        )
-    except Exception as e:
-        logger.debug("sendMessageDraft not supported: %s", e)
-        use_drafts = False
+    # Immediate feedback
+    use_drafts = await _send_draft(bot, chat_id, draft_id, "Thinking…")
 
     async for chunk in llm.stream_response(user_id, user_text):
         accumulated += chunk
@@ -88,19 +116,15 @@ async def _stream_response(
 
         now = time.time()
         if now - last_send >= interval:
-            try:
-                await bot.send_message_draft(
-                    chat_id=chat_id,
-                    draft_id=draft_id,
-                    text=_clip(accumulated),
-                )
-                last_send = now
-            except Exception as e:
-                logger.debug("sendMessageDraft failed: %s", e)
-                use_drafts = False
+            use_drafts = await _send_draft(
+                bot, chat_id, draft_id, accumulated
+            )
+            last_send = now
 
-    # Finalize with sendMessage
-    await bot.send_message(
-        chat_id=chat_id,
-        text=_clip(accumulated) or "🤔 No response generated.",
-    )
+    # Send final formatted message (HTML with Markdown conversion)
+    if accumulated:
+        await _send_formatted(bot, chat_id, accumulated)
+    else:
+        await bot.send_message(
+            chat_id=chat_id, text="🤔 No response generated."
+        )
