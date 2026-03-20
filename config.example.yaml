@@ -1,0 +1,19 @@
+llm:
+  default_model: "anthropic/claude-sonnet-4"
+  max_tokens: 4096
+  temperature: 0.7
+
+vault:
+  path: "/home/pi/obsidian-vault"
+  default_folder: "notes"
+
+conversation:
+  session_timeout_minutes: 30
+  max_history_messages: 50
+
+streaming:
+  draft_interval_ms: 150
+  min_chunk_chars: 20
+
+channels:
+  monitor: []
