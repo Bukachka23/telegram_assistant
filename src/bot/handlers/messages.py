@@ -16,8 +16,8 @@ router = Router(name="messages")
 
 def setup_messages(
     llm: LLMService,
-    draft_interval_ms: int = 150,
-    min_chunk_chars: int = 20,
+    draft_interval_ms: int = 50,
+    min_chunk_chars: int = 1,
 ) -> Router:
     """Configure the free-text message handler with streaming."""
 
@@ -51,6 +51,22 @@ def setup_messages(
     return router
 
 
+async def _send_draft(
+    bot: Bot, chat_id: int, draft_id: int, text: str
+) -> bool:
+    """Send a draft, return False if unsupported."""
+    try:
+        await bot.send_message_draft(
+            chat_id=chat_id,
+            draft_id=draft_id,
+            text=text,
+        )
+        return True
+    except Exception as e:
+        logger.debug("sendMessageDraft failed: %s", e)
+        return False
+
+
 async def _stream_response(
     bot: Bot,
     chat_id: int,
@@ -64,31 +80,33 @@ async def _stream_response(
     accumulated = ""
     draft_id = int(time.time() * 1000) % (2**31 - 1)
     last_draft_time = 0.0
+    last_draft_len = 0
     interval = draft_interval_ms / 1000.0
-    use_drafts = True  # Disable if sendMessageDraft fails
+    use_drafts = True
 
     async for chunk in llm.stream_response(user_id, user_text):
         accumulated += chunk
-        now = time.monotonic()
 
         if not use_drafts:
-            continue  # Just accumulate, don't try drafts
+            continue
 
-        enough_time = now - last_draft_time >= interval
-        enough_text = len(accumulated) >= min_chunk_chars
-        if enough_time and enough_text:
-            try:
-                await bot.send_message_draft(
-                    chat_id=chat_id,
-                    draft_id=draft_id,
-                    text=accumulated,
-                )
+        now = time.monotonic()
+        new_chars = len(accumulated) - last_draft_len
+
+        # Send draft when enough time passed AND new content exists
+        if now - last_draft_time >= interval and new_chars >= min_chunk_chars:
+            use_drafts = await _send_draft(
+                bot, chat_id, draft_id, accumulated
+            )
+            if use_drafts:
                 last_draft_time = now
-            except Exception as e:
-                logger.debug("sendMessageDraft failed, falling back: %s", e)
-                use_drafts = False
+                last_draft_len = len(accumulated)
 
-    # Send the final message (this replaces the draft)
+    # Send final draft with complete text (smooth transition)
+    if use_drafts and len(accumulated) > last_draft_len:
+        await _send_draft(bot, chat_id, draft_id, accumulated)
+
+    # Finalize with sendMessage
     if accumulated:
         await bot.send_message(chat_id=chat_id, text=accumulated)
     else:

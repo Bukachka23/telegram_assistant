@@ -27,8 +27,8 @@ class ConversationConfig(BaseModel):
 
 
 class StreamingConfig(BaseModel):
-    draft_interval_ms: int = 150
-    min_chunk_chars: int = 20
+    draft_interval_ms: int = 50
+    min_chunk_chars: int = 1
 
 
 class ChannelMonitorEntry(BaseModel):
