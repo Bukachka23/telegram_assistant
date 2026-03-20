@@ -12,7 +12,7 @@ class TestSettings:
         s = Settings()
         assert s.llm.default_model == "anthropic/claude-sonnet-4"
         assert s.conversation.session_timeout_minutes == 30
-        assert s.streaming.draft_interval_ms == 50
+        assert s.streaming.draft_interval_ms == 800
 
     def test_load_from_yaml(self, tmp_path: Path):
         yaml_file = tmp_path / "config.yaml"

@@ -12,8 +12,7 @@ conversation:
   max_history_messages: 50
 
 streaming:
-  draft_interval_ms: 50
-  min_chunk_chars: 1
+  draft_interval_ms: 800
 
 channels:
   monitor: []

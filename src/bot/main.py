@@ -125,7 +125,6 @@ async def run() -> None:
         setup_messages(
             llm=llm,
             draft_interval_ms=settings.streaming.draft_interval_ms,
-            min_chunk_chars=settings.streaming.min_chunk_chars,
         )
     )
 
