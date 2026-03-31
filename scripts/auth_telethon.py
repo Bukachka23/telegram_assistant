@@ -15,7 +15,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from bot.config import load_settings
+from bot.shared.config import load_settings
 
 
 async def main() -> None:

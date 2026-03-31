@@ -1,25 +1,14 @@
-"""Convert LLM Markdown output to Telegram-compatible HTML."""
-
 import re
 from html import escape
 
 
 def md_to_tg_html(text: str) -> str:
-    """Convert standard Markdown to Telegram HTML.
-
-    Telegram supports: <b>, <i>, <u>, <s>, <code>, <pre>,
-    <blockquote>, <a href="">, <tg-spoiler>.
-
-    Handles: headers, bold, italic, strikethrough, code blocks,
-    inline code, blockquotes, links, tables, horizontal rules.
-    """
+    """Convert standard Markdown to Telegram HTML."""
     # 1. Extract fenced code blocks before any processing
-    code_blocks: list[str] = []
-    text = _extract_fenced_code(text, code_blocks)
+    text, code_blocks = _extract_fenced_code(text)
 
     # 2. Extract inline code
-    inline_codes: list[str] = []
-    text = _extract_inline_code(text, inline_codes)
+    text, inline_codes = _extract_inline_code(text)
 
     # 3. Escape HTML in remaining text
     text = escape(text)
@@ -46,8 +35,9 @@ def md_to_tg_html(text: str) -> str:
     return text.strip()
 
 
-def _extract_fenced_code(text: str, store: list[str]) -> str:
-    """Replace ```lang\\ncode\\n``` with placeholders."""
+def _extract_fenced_code(text: str) -> tuple[str, list[tuple[str, str]]]:
+    """Replace langncode\\n with placeholders and return extracted data."""
+    store: list[tuple[str, str]] = []
 
     def replacer(m: re.Match) -> str:
         lang = m.group(1) or ""
@@ -55,27 +45,29 @@ def _extract_fenced_code(text: str, store: list[str]) -> str:
         store.append((lang, code))
         return f"\x00CODEBLOCK{len(store) - 1}\x00"
 
-    return re.sub(
+    processed_text = re.sub(
         r"```(\w*)\n(.*?)```",
         replacer,
         text,
         flags=re.DOTALL,
     )
+    return processed_text, store
 
 
-def _extract_inline_code(text: str, store: list[str]) -> str:
-    """Replace `code` with placeholders."""
+def _extract_inline_code(text: str) -> tuple[str, list[str]]:
+    """Replace `code` with placeholders and return extracted data."""
+    store: list[str] = []
 
     def replacer(m: re.Match) -> str:
         store.append(m.group(1))
         return f"\x00INLINE{len(store) - 1}\x00"
 
-    return re.sub(r"`([^`\n]+)`", replacer, text)
+    processed_text = re.sub(r"`([^`\n]+)`", replacer, text)
+    return processed_text, store
 
 
 def _convert_headers(text: str) -> str:
     """Convert # headers to bold text."""
-    # ### Header → \n<b>Header</b>\n
     return re.sub(
         r"^#{1,6}\s+(.+)$",
         r"\n<b>\1</b>\n",
@@ -86,13 +78,9 @@ def _convert_headers(text: str) -> str:
 
 def _convert_bold_italic(text: str) -> str:
     """Convert **bold** and *italic*."""
-    # Bold+italic ***text*** → <b><i>text</i></b>
     text = re.sub(r"\*\*\*(.+?)\*\*\*", r"<b><i>\1</i></b>", text)
-    # Bold **text** → <b>text</b>
     text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
-    # Italic *text* (but not inside words like file*name)
-    text = re.sub(r"(?<!\w)\*([^\*\n]+?)\*(?!\w)", r"<i>\1</i>", text)
-    return text
+    return re.sub(r"(?<!\w)\*([^*\n]+?)\*(?!\w)", r"<i>\1</i>", text)
 
 
 def _convert_strikethrough(text: str) -> str:
@@ -109,7 +97,6 @@ def _convert_blockquotes(text: str) -> str:
     for line in lines:
         stripped = line.lstrip()
         if stripped.startswith("&gt; "):
-            # &gt; is escaped '>'
             content = stripped[5:]
             if not in_quote:
                 result.append("<blockquote>")
@@ -130,17 +117,14 @@ def _convert_blockquotes(text: str) -> str:
 def _convert_links(text: str) -> str:
     """Convert [text](url) to <a> tags."""
     return re.sub(
-        r"\[([^\]]+)\]\(([^)]+)\)",
+        r"\[([^]]+)]\(([^)]+)\)",
         r'<a href="\2">\1</a>',
         text,
     )
 
 
 def _convert_tables(text: str) -> str:
-    """Convert Markdown tables to preformatted text.
-
-    Telegram has no table support, so we render them as <pre> blocks.
-    """
+    """Convert Markdown tables to preformatted text."""
     lines = text.split("\n")
     result: list[str] = []
     table_lines: list[str] = []
@@ -168,7 +152,6 @@ def _convert_tables(text: str) -> str:
 
 def _render_table(lines: list[str]) -> str:
     """Render table lines as a <pre> block."""
-    # Filter out separator rows (|---|---|)
     content = []
     for line in lines:
         if re.match(r"^\s*\|[\s\-:|]+\|\s*$", line):
@@ -197,7 +180,7 @@ def _restore_inline_code(text: str, store: list[str]) -> str:
     return text
 
 
-def _restore_code_blocks(text: str, store: list) -> str:
+def _restore_code_blocks(text: str, store: list[tuple[str, str]]) -> str:
     """Replace code block placeholders with <pre><code> tags."""
     for i, (lang, code) in enumerate(store):
         escaped = escape(code.rstrip())

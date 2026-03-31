@@ -24,7 +24,10 @@ This skill uses the following reference documents located in `references/`:
 
 | Document | Purpose |
 |----------|---------|
-| `tips_for_refactoring.md` | Practical refactoring patterns and anti-patterns |
+| `code_smells_catalog.md` | **Complete taxonomy of all 22 code smells** — Signs, Cause, Treatment, Payoff, When to Ignore |
+| `refactoring_techniques_catalog.md` | **Full catalog of ~65 refactoring techniques** — Problem, Solution, Python notes, quick lookup |
+| `refactoring_strategy.md` | **When/how/why to refactor** — Rule of Three, technical debt causes, safe refactoring steps |
+| `tips_for_refactoring.md` | Practical Python refactoring patterns and anti-patterns with code examples |
 | `clean_arhitecture.md` | SOLID principles and layered architecture |
 | `functions_and_methods.md` | Function design: size, guard clauses, returns |
 | `design_patterns.md` | When and how to apply design patterns |
@@ -170,17 +173,29 @@ Apply approved changes following these principles:
 
 ### Smell → Fix Mapping
 
+For the complete smell taxonomy (all 22 smells with signs, causes, and treatment), see `code_smells_catalog.md`.
+For all ~65 refactoring techniques with problem/solution lookup, see `refactoring_techniques_catalog.md`.
+
 | Code Smell | Reference Doc | Quick Fix |
 |------------|---------------|-----------|
-| Long function | `functions_and_methods.md` | Extract helper functions |
-| Dict as data | `data_modeling.md` | Use dataclass or Pydantic |
-| Deep nesting | `functions_and_methods.md` | Guard clauses |
-| God class | `when_to_use_classes.md` | Extract class per responsibility |
-| Magic numbers | `tips_for_refactoring.md` | Named constants |
-| Missing types | `type_hints_protocols.md` | Add annotations |
-| Repeated code | `tips_for_refactoring.md` | Extract common function |
+| Long function / Long Method | `code_smells_catalog.md` + `functions_and_methods.md` | Extract Method, Decompose Conditional |
+| Large Class / God class | `code_smells_catalog.md` + `when_to_use_classes.md` | Extract Class, Extract Subclass |
+| Primitive Obsession | `code_smells_catalog.md` + `data_modeling.md` | Replace Data Value with Object, use `@dataclass` |
+| Long Parameter List | `code_smells_catalog.md` + `tips_for_refactoring.md` | Introduce Parameter Object |
+| Data Clumps | `code_smells_catalog.md` + `data_modeling.md` | Extract Class, Introduce Parameter Object |
+| Duplicate Code | `code_smells_catalog.md` + `tips_for_refactoring.md` | Extract Method, Pull Up Method |
+| Dead Code | `code_smells_catalog.md` | Delete; use `ruff F401` / `vulture` |
+| Switch Statements | `code_smells_catalog.md` + `design_patterns.md` | Replace Conditional with Polymorphism |
+| Feature Envy | `code_smells_catalog.md` + `tips_for_refactoring.md` | Move Method |
+| Message Chains | `code_smells_catalog.md` | Hide Delegate |
+| Divergent Change | `code_smells_catalog.md` | Extract Class |
+| Shotgun Surgery | `code_smells_catalog.md` | Move Method + Move Field |
+| Dict as data | `data_modeling.md` | Use `@dataclass` or Pydantic |
+| Deep nesting | `functions_and_methods.md` | Guard clauses (Replace Nested Conditional with Guard Clauses) |
+| Magic numbers | `tips_for_refactoring.md` | Named constants or `Enum` |
+| Missing types | `type_hints_protocols.md` | Add type annotations |
 | Wildcard import | `module_organization.md` | Explicit imports |
-| Catch-all except | `tips_for_refactoring.md` | Specific exceptions |
+| Catch-all except | `tips_for_refactoring.md` | Specific exception types |
 
 ## Example Review Output
 

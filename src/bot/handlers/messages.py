@@ -1,34 +1,29 @@
-"""Message handler: free-text → LLM pipeline with streaming via sendMessageDraft."""
-
 import logging
 import time
 
 from aiogram import Bot, Router
 from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramAPIError
 from aiogram.types import Message
 
 from bot.domain.exceptions import LLMError
 from bot.services.formatting import md_to_tg_html
 from bot.services.llm import LLMService
+from bot.shared.constants import MAX_TG_TEXT
 
 logger = logging.getLogger(__name__)
 
 router = Router(name="messages")
 
-_MAX_TG_TEXT = 4096
-
 
 def _clip(text: str) -> str:
     """Clip text to Telegram's max message length."""
-    if len(text) <= _MAX_TG_TEXT:
+    if len(text) <= MAX_TG_TEXT:
         return text
-    return "… " + text[-(_MAX_TG_TEXT - 2) :]
+    return "… " + text[-(MAX_TG_TEXT - 2) :]
 
 
-def setup_messages(
-    llm: LLMService,
-    draft_interval_ms: int = 800,
-) -> Router:
+def setup_messages(*, llm: LLMService, draft_interval_ms: int = 800) -> Router:
     """Configure the free-text message handler with streaming."""
 
     @router.message()
@@ -49,7 +44,7 @@ def setup_messages(
                 draft_interval_ms=draft_interval_ms,
             )
         except LLMError as e:
-            logger.error("LLM error for user %d: %s", user_id, e)
+            logger.exception("LLM error for user %d", user_id)
             await message.answer(f"⚠️ LLM error: {e}")
         except Exception:
             logger.exception("Unexpected error for user %d", user_id)
@@ -58,39 +53,29 @@ def setup_messages(
     return router
 
 
-async def _send_draft(
-    bot: Bot, chat_id: int, draft_id: int, text: str
-) -> bool:
+async def _send_draft(*, bot: Bot, chat_id: int, draft_id: int, text: str) -> bool:
     """Send a streaming draft. Returns False if unsupported."""
     try:
-        await bot.send_message_draft(
-            chat_id=chat_id,
-            draft_id=draft_id,
-            text=_clip(text),
-        )
-        return True
-    except Exception as e:
+        await bot.send_message_draft(chat_id=chat_id, draft_id=draft_id, text=_clip(text))
+    except TelegramAPIError as e:
         logger.debug("sendMessageDraft failed: %s", e)
         return False
+    else:
+        return True
 
 
-async def _send_formatted(
-    bot: Bot, chat_id: int, text: str
-) -> None:
+async def _send_formatted(*, bot: Bot, chat_id: int, text: str) -> None:
     """Send final message with HTML formatting, fallback to plain."""
     try:
         html = md_to_tg_html(text)
-        await bot.send_message(
-            chat_id=chat_id,
-            text=_clip(html),
-            parse_mode=ParseMode.HTML,
-        )
-    except Exception:
+        await bot.send_message(chat_id=chat_id, text=_clip(html), parse_mode=ParseMode.HTML)
+    except TelegramAPIError:
         logger.debug("HTML send failed, falling back to plain text")
         await bot.send_message(chat_id=chat_id, text=_clip(text))
 
 
 async def _stream_response(
+    *,
     bot: Bot,
     chat_id: int,
     llm: LLMService,
@@ -103,10 +88,9 @@ async def _stream_response(
     interval = draft_interval_ms / 1000.0
     accumulated = ""
     last_send = 0.0
-    use_drafts = True
 
     # Immediate feedback
-    use_drafts = await _send_draft(bot, chat_id, draft_id, "Thinking…")
+    use_drafts = await _send_draft(bot=bot, chat_id=chat_id, draft_id=draft_id, text="Thinking…")
 
     async for chunk in llm.stream_response(user_id, user_text):
         accumulated += chunk
@@ -116,15 +100,11 @@ async def _stream_response(
 
         now = time.time()
         if now - last_send >= interval:
-            use_drafts = await _send_draft(
-                bot, chat_id, draft_id, accumulated
-            )
+            use_drafts = await _send_draft(bot=bot, chat_id=chat_id, draft_id=draft_id, text=accumulated)
             last_send = now
 
     # Send final formatted message (HTML with Markdown conversion)
     if accumulated:
-        await _send_formatted(bot, chat_id, accumulated)
+        await _send_formatted(bot=bot, chat_id=chat_id, text=accumulated)
     else:
-        await bot.send_message(
-            chat_id=chat_id, text="🤔 No response generated."
-        )
+        await bot.send_message(chat_id=chat_id, text="🤔 No response generated.")

@@ -1,12 +1,9 @@
-"""Obsidian vault tools for LLM function calling."""
-
 from bot.services.vault import VaultService
 from bot.tools.registry import ToolRegistry
 
 
 def register_vault_tools(registry: ToolRegistry, vault: VaultService) -> None:
     """Register all vault tools with the registry."""
-
     registry.register(
         name="search_vault",
         description=(
@@ -109,6 +106,5 @@ def _search(vault: VaultService, query: str, max_results: int) -> str:
     if not notes:
         return f"No notes found matching '{query}'"
     lines = [f"Found {len(notes)} note(s):"]
-    for note in notes:
-        lines.append(f"\n📄 {note.path}\n{note.content}")
+    lines.extend(f"\n📄 {note.path}\n{note.content}" for note in notes)
     return "\n".join(lines)

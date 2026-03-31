@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from bot.infrastructure.openrouter import OpenRouterClient, StreamDelta
+from bot.infrastructure.open_router.openrouter import OpenRouterClient, StreamDelta
 
 
 def _make_sse_lines(chunks: list[dict]) -> list[str]:

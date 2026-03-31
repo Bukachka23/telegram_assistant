@@ -1,86 +1,138 @@
 """Tests for conversation manager."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from bot.domain.models import Message, Role
 from bot.services.conversation import ConversationManager
+from bot.shared.agents.registry import DEFAULT_AGENT_NAME, get_default_agent
 
 
-class TestConversationManager:
-    def _make_manager(self, **kwargs) -> ConversationManager:
-        defaults = {
-            "default_model": "test-model",
-            "session_timeout_minutes": 30,
-            "max_history": 50,
-        }
-        return ConversationManager(**{**defaults, **kwargs})
+def _make_manager(**kwargs) -> ConversationManager:
+    defaults = {
+        "default_model": "test-model",
+        "session_timeout_minutes": 30,
+        "max_history": 50,
+    }
+    return ConversationManager(**{**defaults, **kwargs})
 
-    def test_new_session_has_system_prompt(self):
-        mgr = self._make_manager()
-        session = mgr.get_or_create(user_id=1)
-        assert len(session.messages) == 1
-        assert session.messages[0].role == Role.SYSTEM
-        assert session.model == "test-model"
 
-    def test_get_existing_session(self):
-        mgr = self._make_manager()
-        s1 = mgr.get_or_create(user_id=1)
-        s2 = mgr.get_or_create(user_id=1)
-        assert s1 is s2
+def test_new_session_has_default_system_prompt_and_agent() -> None:
+    manager = _make_manager()
 
-    def test_expired_session_resets(self):
-        mgr = self._make_manager(session_timeout_minutes=1)
-        session = mgr.get_or_create(user_id=1)
-        mgr.add_message(1, Message(role=Role.USER, content="old"))
+    session = manager.get_or_create(user_id=1)
 
-        # Simulate expiry
-        session.last_active = datetime.now() - timedelta(minutes=5)
+    assert len(session.messages) == 1
+    assert session.messages[0].role == Role.SYSTEM
+    assert session.messages[0].content == get_default_agent().prompt
+    assert session.model == "test-model"
+    assert session.active_agent == DEFAULT_AGENT_NAME
 
-        new_session = mgr.get_or_create(user_id=1)
-        assert len(new_session.messages) == 1  # Only system prompt
-        assert new_session is not session
 
-    def test_add_message(self):
-        mgr = self._make_manager()
-        mgr.add_message(1, Message(role=Role.USER, content="hello"))
-        session = mgr.get_or_create(1)
-        assert len(session.messages) == 2  # system + user
+def test_get_existing_session() -> None:
+    manager = _make_manager()
 
-    def test_messages_for_api_format(self):
-        mgr = self._make_manager()
-        mgr.add_message(1, Message(role=Role.USER, content="hi"))
-        msgs = mgr.get_messages_for_api(1)
-        assert msgs[0]["role"] == "system"
-        assert msgs[1]["role"] == "user"
-        assert msgs[1]["content"] == "hi"
+    first = manager.get_or_create(user_id=1)
+    second = manager.get_or_create(user_id=1)
 
-    def test_model_switching(self):
-        mgr = self._make_manager()
-        mgr.get_or_create(1)
-        mgr.set_model(1, "new-model")
-        assert mgr.get_model(1) == "new-model"
+    assert first is second
 
-    def test_clear_session(self):
-        mgr = self._make_manager()
-        mgr.add_message(1, Message(role=Role.USER, content="hi"))
-        mgr.clear(1)
-        session = mgr.get_or_create(1)
-        assert len(session.messages) == 1  # Fresh system prompt
 
-    def test_trim_respects_max_history(self):
-        mgr = self._make_manager(max_history=5)
-        for i in range(20):
-            mgr.add_message(1, Message(role=Role.USER, content=f"msg {i}"))
-        session = mgr.get_or_create(1)
-        assert len(session.messages) == 5
+def test_expired_session_resets_to_default_agent() -> None:
+    manager = _make_manager(session_timeout_minutes=1)
+    session = manager.get_or_create(user_id=1)
+    manager.add_message(1, Message(role=Role.USER, content="old"))
+    manager.set_active_agent(1, "researcher")
 
-    def test_tool_message_format(self):
-        mgr = self._make_manager()
-        mgr.add_message(
-            1,
-            Message(role=Role.TOOL, content="result", tool_call_id="call_1"),
-        )
-        msgs = mgr.get_messages_for_api(1)
-        tool_msg = msgs[-1]
-        assert tool_msg["tool_call_id"] == "call_1"
-        assert tool_msg["role"] == "tool"
+    session.last_active = datetime.now(UTC) - timedelta(minutes=5)
+
+    new_session = manager.get_or_create(user_id=1)
+
+    assert len(new_session.messages) == 1
+    assert new_session is not session
+    assert new_session.active_agent == DEFAULT_AGENT_NAME
+
+
+def test_add_message() -> None:
+    manager = _make_manager()
+
+    manager.add_message(1, Message(role=Role.USER, content="hello"))
+    session = manager.get_or_create(1)
+
+    assert len(session.messages) == 2
+
+
+def test_messages_for_api_format() -> None:
+    manager = _make_manager()
+
+    manager.add_message(1, Message(role=Role.USER, content="hi"))
+    messages = manager.get_messages_for_api(1)
+
+    assert messages[0]["role"] == "system"
+    assert messages[1]["role"] == "user"
+    assert messages[1]["content"] == "hi"
+
+
+def test_messages_for_api_can_override_system_prompt() -> None:
+    manager = _make_manager()
+    manager.add_message(1, Message(role=Role.USER, content="hi"))
+
+    messages = manager.get_messages_for_api(1, system_prompt="OVERRIDE")
+    session = manager.get_or_create(1)
+
+    assert messages[0]["content"] == "OVERRIDE"
+    assert session.messages[0].content == get_default_agent().prompt
+
+
+def test_model_switching() -> None:
+    manager = _make_manager()
+
+    manager.get_or_create(1)
+    manager.set_model(1, "new-model")
+
+    assert manager.get_model(1) == "new-model"
+
+
+def test_active_agent_switching_is_per_user() -> None:
+    manager = _make_manager()
+
+    manager.set_active_agent(1, "researcher")
+    manager.get_or_create(2)
+
+    assert manager.get_active_agent(1) == "researcher"
+    assert manager.get_active_agent(2) == DEFAULT_AGENT_NAME
+
+
+def test_clear_session_resets_active_agent() -> None:
+    manager = _make_manager()
+
+    manager.add_message(1, Message(role=Role.USER, content="hi"))
+    manager.set_active_agent(1, "researcher")
+    manager.clear(1)
+    session = manager.get_or_create(1)
+
+    assert len(session.messages) == 1
+    assert session.active_agent == DEFAULT_AGENT_NAME
+
+
+def test_trim_respects_max_history() -> None:
+    manager = _make_manager(max_history=5)
+
+    for index in range(20):
+        manager.add_message(1, Message(role=Role.USER, content=f"msg {index}"))
+    session = manager.get_or_create(1)
+
+    assert len(session.messages) == 5
+
+
+def test_tool_message_format() -> None:
+    manager = _make_manager()
+
+    manager.add_message(
+        1,
+        Message(role=Role.TOOL, content="result", tool_call_id="call_1"),
+    )
+    messages = manager.get_messages_for_api(1)
+    tool_message = messages[-1]
+
+    assert tool_message["tool_call_id"] == "call_1"
+    assert tool_message["role"] == "tool"

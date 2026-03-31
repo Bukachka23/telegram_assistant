@@ -1,18 +1,7 @@
-"""Tool registry: maps tool names to callables and OpenRouter schemas."""
-
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import Any
 
-
-@dataclass(frozen=True)
-class Tool:
-    """A registered tool with its schema and implementation."""
-
-    name: str
-    description: str
-    parameters: dict[str, Any]
-    fn: Callable[..., str]
+from bot.domain.models import Tool
 
 
 class ToolRegistry:
@@ -21,20 +10,9 @@ class ToolRegistry:
     def __init__(self) -> None:
         self._tools: dict[str, Tool] = {}
 
-    def register(
-        self,
-        name: str,
-        description: str,
-        parameters: dict[str, Any],
-        fn: Callable[..., str],
-    ) -> None:
+    def register(self, name: str, description: str, parameters: dict[str, Any], fn: Callable[..., str]) -> None:
         """Register a tool."""
-        self._tools[name] = Tool(
-            name=name,
-            description=description,
-            parameters=parameters,
-            fn=fn,
-        )
+        self._tools[name] = Tool(name=name, description=description, parameters=parameters, fn=fn,)
 
     def get(self, name: str) -> Tool | None:
         """Get a tool by name."""
@@ -47,7 +25,7 @@ class ToolRegistry:
             return f"Error: unknown tool '{name}'"
         try:
             return tool.fn(**arguments)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             return f"Error: {e}"
 
     def to_openrouter_schema(self) -> list[dict]:

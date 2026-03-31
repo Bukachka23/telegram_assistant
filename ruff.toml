@@ -1,0 +1,159 @@
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+    "alembic/*",
+]
+
+line-length = 120
+target-version = "py310"
+preview = true
+
+[lint]
+# https://docs.astral.sh/ruff/rules/  - to check error codes
+select = [
+    "F",     # pyflakes
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "ANN",   # flake8-annotations
+    "ASYNC", # flake8-async
+    "S",     # flake8-bandit
+    "BLE",   # flake8-blind-except
+    "B",     # flake8-bugbear
+    "A",     # flake8-builtins
+    "C4",    # flake8-comprehensions
+    "EM",    # flake8-errmsg
+    "ISC",   # flake8-implicit-str-concat
+    "ICN",   # flake8-import-conventions
+    "LOG",   # flake8-logging
+    "G",     # flake8-logging-format
+    "PIE",   # flake8-pie
+    "T20",   # flake8-print
+    "PT",    # flake8-pytest-style
+    "Q",     # flake8-quotes
+    "RSE",   # flake8-raise
+    "RET",   # flake8-return
+    "SLF",   # flake8-self
+    "SLOT",  # flake8-slots
+    "SIM",   # flake8-simplify
+    "TC",    # flake8-type-checking (renamed from TCH*)
+    "ARG",   # flake8-unused-arguments
+    "TD",    # flake8-todos
+#   "ERA",   # eradicate (commented out — aggressively removes commented code)
+
+    # --- Added families ---
+    "TRY",   # tryceratops
+    "FBT",   # flake8-boolean-trap
+    "PGH",   # pygrep-hooks
+    "DTZ",   # flake8-datetimez
+    "PTH",   # flake8-use-pathlib
+    "INP",   # flake8-no-pep420
+    "TID",   # flake8-tidy-imports
+    "D",     # pydocstyle
+    "DJ",    # flake8-django
+
+    "PL",    # Pylint
+    "FLY",   # flynt
+    "PERF",  # Perflint
+    "FURB",  # refurb
+    "RUF",   # Ruff-specific rules
+]
+
+ignore = [
+    # --- pep8-naming ---
+    "N805",  # First argument of a method should be named `self` (conflicts with pydantic validators)
+
+    # --- flake8-annotations ---
+    # ANN101 and ANN102 were removed in ruff 0.5.0 — do not add them back
+    "ANN002",  # Missing type annotation for *args
+    "ANN003",  # Missing type annotation for **kwargs
+
+    # --- flake8-commas ---
+    # COM812 conflicts with ruff formatter — keep it disabled
+    "COM812",  # Trailing comma missing
+
+    # --- flake8-logging-format ---
+    "G004",  # Logging statement uses f-string (common pattern, enforce lazily only if perf matters)
+
+    # --- flake8-implicit-str-concat ---
+    # ISC001 conflicts with ruff formatter
+    "ISC001",  # Implicitly concatenated string literals on one line
+
+    # --- flake8-todos ---
+    "TD003",  # Missing issue link on the line following this TODO
+
+    # --- Pylint ---
+    "PLR0904",  # Too many public methods (> 20)
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0917",  # Too many positional arguments
+
+    # --- Ruff-specific ---
+    "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar` (noisy with Django/ORM patterns)
+
+    # --- pydocstyle ---
+    # Keep docstring *quality* checks, but don't force docstrings everywhere by default.
+    "D100",  # Missing docstring in public module
+    "D101",  # Missing docstring in public class
+    "D102",  # Missing docstring in public method
+    "D103",  # Missing docstring in public function
+    "D104",  # Missing docstring in public package
+    "D105",  # Missing docstring in magic method
+    "D106",  # Missing docstring in public nested class
+    "D107",  # Missing docstring in `__init__`
+]
+
+[lint.per-file-ignores]
+"tests/*" = [
+    "S101",    # Use of assert (expected in tests)
+    "S105",    # Hardcoded passwords (test fixtures)
+    "S106",    # Hardcoded passwords (test fixtures)
+    "ANN",     # No type annotations required in tests
+    "ARG",     # Unused arguments are common in test fixtures
+    "TD",      # TODOs in tests don't need issue links
+    "PLR2004", # Magic value comparisons are fine in assertions
+    "PLR0913", # Many arguments are fine in parametrize
+    "SLF001",  # Private member access is fine in tests
+]
+
+# Django migrations are auto-generated: keep them formatted, but reduce lint noise.
+"**/migrations/*.py" = [
+    "D",       # Docstrings not useful in generated code
+    "ANN",     # Type annotations not expected in generated code
+    "S",       # Security rules tend to false-positive on generated patterns
+    "ARG",     # Unused arguments can appear in generated operations
+    "FBT",     # Generated calls may include positional booleans
+]
+
+[lint.pydocstyle]
+convention = "google"
+
+[format]
+docstring-code-format = true
+indent-style = "space"
+quote-style = "double"
