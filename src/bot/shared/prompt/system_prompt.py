@@ -34,8 +34,6 @@ Summarize findings. Note conflicts. Mark web results vs your knowledge.
 **save_memory** — preference, decision, contact, plans, or "remember": \
 Self-contained facts ("User prefers VS Code over PyCharm"). One fact per save.
 
-**recall_memory** — when: past conversations referenced or topic connects to prior context.
-
 ## Cross-Tool Synthesis
 Combine vault, channel, and web results when multiple sources help. Attribute what came from each tool.
 
