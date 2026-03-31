@@ -63,7 +63,7 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     """Load YAML file, return empty dict if missing."""
     if not path.exists():
         return {}
-    with open(path) as f:
+    with Path(path).open() as f:
         return yaml.safe_load(f) or {}
 
 
