@@ -284,3 +284,49 @@ async def test_disallowed_tool_call_is_rejected_for_active_agent(
     messages = conversations.get_messages_for_api(1)
     tool_messages = [message for message in messages if message["role"] == "tool"]
     assert any("not available for the active agent" in message["content"] for message in tool_messages)
+
+
+@pytest.mark.asyncio
+async def test_complete_side_context_runs_tool_loop_without_conversation_state(
+    llm_service: LLMService,
+    mock_client: OpenRouterClient,
+    conversations: ConversationManager,
+) -> None:
+    call_count = 0
+
+    def make_stream(*args, **kwargs):
+        del args, kwargs
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return _async_iter([
+                StreamDelta(
+                    tool_calls=[
+                        ToolCall(
+                            id="call_1",
+                            name="search_vault",
+                            arguments=json.dumps({"query": "sleep"}),
+                        )
+                    ]
+                )
+            ])
+        return _async_iter([StreamDelta(text="Side result")])
+
+    mock_client.stream_completion = MagicMock(side_effect=make_stream)
+
+    result = await llm_service.complete_side_context(
+        messages=[
+            {"role": "system", "content": "system prompt"},
+            {"role": "user", "content": "research this"},
+        ],
+        model="test-model",
+        allowed_tools=["search_vault"],
+        temperature=0.2,
+        max_tokens=512,
+    )
+
+    assert result == "Side result"
+    assert call_count == 2
+    messages = conversations.get_messages_for_api(1)
+    assert len(messages) == 1
+    assert messages[0]["role"] == "system"

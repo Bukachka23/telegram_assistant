@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from bot.domain.exceptions import LLMError
 from bot.handlers.commands import setup_commands
 from bot.services.conversation import ConversationManager
 from bot.shared.agents.registry import DEFAULT_AGENT_NAME
@@ -96,6 +97,27 @@ class FakeMonitorService:
         return len(self.monitors) < before
 
 
+class FakeDeepResearchService:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, int]] = []
+        self.result = "Deep research final answer"
+        self.error: Exception | None = None
+        self.progress_messages = [
+            "🔬 Starting deep research (up to 3 cycles)...",
+            "🔄 Cycle 1/3 — exploring the question",
+            "📝 Cycle 1 summary: initial findings collected",
+            "✅ Research complete after 1 cycle.",
+        ]
+
+    async def run(self, *, query: str, model: str, on_progress, max_cycles: int = 3) -> str:
+        self.calls.append((query, model, max_cycles))
+        for text in self.progress_messages:
+            await on_progress(text)
+        if self.error is not None:
+            raise self.error
+        return self.result
+
+
 @pytest.fixture
 def conversations() -> ConversationManager:
     return ConversationManager(default_model="test-model")
@@ -104,6 +126,11 @@ def conversations() -> ConversationManager:
 @pytest.fixture
 def monitor_service() -> FakeMonitorService:
     return FakeMonitorService()
+
+
+@pytest.fixture
+def deep_research_service() -> FakeDeepResearchService:
+    return FakeDeepResearchService()
 
 
 def _get_handler(router, name: str):
@@ -128,6 +155,7 @@ async def test_start_command_mentions_agent_modes(
     text, kwargs = message.answers[0]
     assert "`/agent` — show current agent" in text
     assert "`/explanatory`" in text
+    assert "`/deep <question>` — run multi-cycle deep research" in text
     assert kwargs["parse_mode"] == "Markdown"
 
 
@@ -321,6 +349,57 @@ async def test_monitor_remove_deletes_persisted_monitor(
 
     assert monitor_service.monitors == []
     assert message.answers[0][0] == "✅ Removed -10055"
+
+
+@pytest.mark.asyncio
+async def test_deep_command_runs_service_with_current_model(
+    conversations: ConversationManager,
+    monitor_service: FakeMonitorService,
+    deep_research_service: FakeDeepResearchService,
+) -> None:
+    conversations.set_model(1, "anthropic/test-model")
+    router = setup_commands(conversations, monitor_service, deep_research=deep_research_service)
+    handler = _get_handler(router, "cmd_deep")
+    message = FakeMessage("/deep compare magnesium glycinate vs citrate for sleep")
+
+    await handler(message)
+
+    assert deep_research_service.calls == [
+        ("compare magnesium glycinate vs citrate for sleep", "anthropic/test-model", 3)
+    ]
+    assert message.answers[-1][0] == "Deep research final answer"
+
+
+@pytest.mark.asyncio
+async def test_deep_command_without_query_returns_usage(
+    conversations: ConversationManager,
+    monitor_service: FakeMonitorService,
+    deep_research_service: FakeDeepResearchService,
+) -> None:
+    router = setup_commands(conversations, monitor_service, deep_research=deep_research_service)
+    handler = _get_handler(router, "cmd_deep")
+    message = FakeMessage("/deep")
+
+    await handler(message)
+
+    assert message.answers == [("Usage: /deep <question>", {})]
+    assert deep_research_service.calls == []
+
+
+@pytest.mark.asyncio
+async def test_deep_command_handles_llm_error_gracefully(
+    conversations: ConversationManager,
+    monitor_service: FakeMonitorService,
+    deep_research_service: FakeDeepResearchService,
+) -> None:
+    deep_research_service.error = LLMError("rate limited")
+    router = setup_commands(conversations, monitor_service, deep_research=deep_research_service)
+    handler = _get_handler(router, "cmd_deep")
+    message = FakeMessage("/deep analyze recent AI benchmarks")
+
+    await handler(message)
+
+    assert message.answers[-1][0] == "⚠️ Deep research failed: rate limited"
 
 
 @pytest.mark.asyncio
