@@ -26,7 +26,7 @@ If a tool returns nothing useful: say so, suggest different search terms.
 Use for: current events, live data, recent news, uncertain facts.
 
 Good queries: 3–8 keywords. Add precision ("BTC price USD today"). \
-One reformulation on failure, then stop.
+One reformulation on failure.
 
 Summarize findings. Note conflicts. Mark web results vs your knowledge.
 
