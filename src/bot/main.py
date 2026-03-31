@@ -15,6 +15,7 @@ from bot.infrastructure.telegram_client.telethon_client import create_telethon_c
 from bot.infrastructure.websearch_engine.tavily_search import TavilySearchClient
 from bot.services.channels import ChannelService
 from bot.services.conversation import ConversationManager
+from bot.services.deep_research import DeepResearchService
 from bot.services.llm import AsyncToolExecutor, LLMService
 from bot.services.memory import MemoryStore
 from bot.services.monitors import MonitorService, MonitorStore
@@ -167,6 +168,7 @@ async def run() -> None:  # noqa: PLR0915
         max_tokens=settings.llm.max_tokens,
         temperature=settings.llm.temperature,
     )
+    deep_research = DeepResearchService(llm=llm)
 
     # --- Wire async channel tools to LLM ---
     if userbot:
@@ -193,7 +195,13 @@ async def run() -> None:  # noqa: PLR0915
     dp.update.middleware(OwnerOnlyMiddleware(owner_user_id=settings.owner_user_id))
 
     # Routers (order matters: commands before catch-all messages)
-    dp.include_router(setup_commands(conversations=conversations, monitor_service=monitor_service))
+    dp.include_router(
+        setup_commands(
+            conversations=conversations,
+            monitor_service=monitor_service,
+            deep_research=deep_research,
+        )
+    )
     dp.include_router(
         setup_messages(
             llm=llm,

@@ -85,6 +85,66 @@ class LLMService:
         )
         yield "⚠️ Reached maximum tool call depth. Please try a simpler request."
 
+    async def complete_side_context(
+        self,
+        *,
+        messages: list[dict[str, Any]],
+        model: str,
+        allowed_tools: list[str] | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> str:
+        """Run the same tool loop against an isolated message context."""
+        tools_schema = self._filter_tools_schema(allowed_tools)
+        effective_temperature = self._temperature if temperature is None else temperature
+        effective_max_tokens = self._max_tokens if max_tokens is None else max_tokens
+        working_messages = [dict(message) for message in messages]
+
+        for _ in range(MAX_TOOL_ROUNDS):
+            text_parts: list[str] = []
+            tool_calls: list[ToolCall] = []
+
+            async for delta in self._client.stream_completion(
+                messages=working_messages,
+                model=model,
+                tools=tools_schema,
+                temperature=effective_temperature,
+                max_tokens=effective_max_tokens,
+            ):
+                if delta.text:
+                    text_parts.append(delta.text)
+                if delta.tool_calls:
+                    tool_calls.extend(delta.tool_calls)
+
+            if text_parts:
+                text = "".join(text_parts)
+                working_messages.append({"role": Role.ASSISTANT.value, "content": text})
+                return text
+
+            if not tool_calls:
+                logger.warning("LLM returned empty side-context response")
+                return ""
+
+            working_messages.append(
+                {
+                    "role": Role.ASSISTANT.value,
+                    "content": "",
+                    "tool_calls": self._format_tool_calls(tool_calls),
+                }
+            )
+            for tool_call in tool_calls:
+                result = await self._execute_single_tool(tool_call, allowed_tools=allowed_tools)
+                working_messages.append(
+                    {
+                        "role": Role.TOOL.value,
+                        "content": result.content,
+                        "tool_call_id": result.tool_call_id,
+                    }
+                )
+
+        logger.error("Max tool rounds (%d) exceeded for side-context completion", MAX_TOOL_ROUNDS)
+        return "⚠️ Reached maximum tool call depth. Please try a narrower research request."
+
     async def _execute_tool_calls(self, user_id: int, tool_calls: list[ToolCall], *, allowed_tools: list[str]) -> None:
         """Execute tool calls and add results to conversation."""
         self._record_tool_calls_intent(user_id, tool_calls)
@@ -155,7 +215,7 @@ class LLMService:
         agent_name = self._conversations.get_active_agent(user_id)
         return get_agent(agent_name) or get_default_agent()
 
-    def _filter_tools_schema(self, allowed_tools: list[str]) -> list[dict] | None:
+    def _filter_tools_schema(self, allowed_tools: list[str] | None) -> list[dict] | None:
         """Return only the tools allowed for the active agent."""
         if not allowed_tools:
             return None
@@ -175,7 +235,14 @@ class LLMService:
         self._conversations.add_message(user_id, Message(role=Role.ASSISTANT, content=text))
 
     def _record_tool_calls_intent(self, user_id: int, tool_calls: list[ToolCall]) -> None:
-        formatted_calls = [
+        self._conversations.add_message(
+            user_id,
+            Message(role=Role.ASSISTANT, content="", tool_calls=self._format_tool_calls(tool_calls)),
+        )
+
+    @staticmethod
+    def _format_tool_calls(tool_calls: list[ToolCall]) -> list[dict[str, Any]]:
+        return [
             {
                 "id": tool_call.id,
                 "type": "function",
@@ -186,10 +253,6 @@ class LLMService:
             }
             for tool_call in tool_calls
         ]
-        self._conversations.add_message(
-            user_id,
-            Message(role=Role.ASSISTANT, content="", tool_calls=formatted_calls),
-        )
 
     def _record_tool_result(self, user_id: int, result: ToolResult) -> None:
         self._conversations.add_message(

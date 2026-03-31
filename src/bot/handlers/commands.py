@@ -1,10 +1,12 @@
 import logging
+from typing import TYPE_CHECKING
 
 from aiogram import F, Router
 from aiogram.dispatcher.event.bases import SkipHandler
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 
+from bot.domain.exceptions import LLMError
 from bot.domain.models import ForwardedChatLike, MonitorDisplay
 from bot.services.conversation import ConversationManager
 from bot.services.monitors import MonitorService
@@ -19,6 +21,9 @@ from bot.shared.constants import (
     MONITOR_COMMAND_MIN_PARTS,
     VAULT_COMMAND_MIN_PARTS,
 )
+
+if TYPE_CHECKING:
+    from bot.services.deep_research import DeepResearchService
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +141,11 @@ async def _handle_monitor_remove(*, message: Message, args: list[str], owner_use
         await message.answer(f"❌ {identifier} not found in monitors")
 
 
-def setup_commands(*, conversations: ConversationManager, monitor_service: MonitorService) -> Router:  # noqa: PLR0915
+def setup_commands(
+    conversations: ConversationManager,
+    monitor_service: MonitorService,
+    deep_research: "DeepResearchService | None" = None,
+) -> Router:
     """Configure command handlers with dependencies."""
     router = Router(name="commands")
 
@@ -150,6 +159,7 @@ def setup_commands(*, conversations: ConversationManager, monitor_service: Monit
             "`/agent` — show current agent, available modes, or switch with `/agent <mode>`\n"
             "`/assistant`, `/explanatory`, `/math_tutor`, `/researcher` — direct agent mode switches\n"
             "`/model` — show or switch LLM model\n"
+            "`/deep <question>` — run multi-cycle deep research\n"
             "`/monitor` — list active monitors\n"
             "`/monitor add @channel kw1, kw2` — monitor a public channel\n"
             "`/monitor add [kw1, kw2]` — then forward a private channel message\n"
@@ -217,6 +227,40 @@ def setup_commands(*, conversations: ConversationManager, monitor_service: Monit
             return
         conversations.clear(message.from_user.id)
         await message.answer("🗑 Conversation cleared.")
+
+    @router.message(Command("deep"))
+    async def cmd_deep(message: Message) -> None:
+        if not message.from_user:
+            return
+        if deep_research is None:
+            await message.answer("⚠️ Deep research is not available right now.")
+            return
+
+        args = (message.text or "").split(maxsplit=1)
+        if len(args) < MODEL_COMMAND_MIN_PARTS or not args[1].strip():
+            await message.answer("Usage: /deep <question>")
+            return
+
+        user_id = message.from_user.id
+        query = args[1].strip()
+        model = conversations.get_model(user_id)
+
+        try:
+            answer = await deep_research.run(
+                query=query,
+                model=model,
+                on_progress=message.answer,
+            )
+        except LLMError as error:
+            logger.exception("Deep research failed for user %d", user_id)
+            await message.answer(f"⚠️ Deep research failed: {error}")
+            return
+        except Exception:
+            logger.exception("Unexpected deep research error for user %d", user_id)
+            await message.answer("⚠️ Deep research failed. Please try again.")
+            return
+
+        await message.answer(answer)
 
     @router.message(Command("monitor"))
     async def cmd_monitor(message: Message) -> None:
