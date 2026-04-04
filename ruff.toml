@@ -146,6 +146,9 @@ ignore = [
     "TD",      # TODOs in tests don't need issue links
     "PLR2004", # Magic value comparisons are fine in assertions
     "PLR0913", # Many arguments are fine in parametrize
+    "PLR6201", # Set literal checks are fine in tests
+    "PLR6301", # Methods don't need to be static in test classes
+    "SIM117",  # Nested with statements are fine in tests
     "SLF001",  # Private member access is fine in tests
 ]
 

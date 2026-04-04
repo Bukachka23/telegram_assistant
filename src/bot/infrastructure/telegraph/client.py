@@ -85,6 +85,6 @@ class TelegraphClient:
         return body["result"]
 
 
-def _post_body(**kwargs: Any) -> dict[str, Any]:
+def _post_body(**kwargs: str) -> dict[str, str]:
     """Build a POST body, dropping None values."""
     return {k: v for k, v in kwargs.items() if v is not None}

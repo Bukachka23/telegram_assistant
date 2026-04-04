@@ -19,6 +19,7 @@ class HealthReport:
     telethon_connected: bool
     tavily_available: bool
     deep_research_available: bool
+    telegraph_available: bool = False
     errors: list[str] = field(default_factory=list)
 
     def format_telegram(self) -> str:
@@ -34,7 +35,8 @@ class HealthReport:
             "**Services:**",
             f"  {'✅' if self.telethon_connected else '❌'} Telethon userbot",
             f"  {'✅' if self.tavily_available else '❌'} Web search (Tavily)",
-            f"  {'✅' if self.deep_research_available else '❌'} Deep research\n",
+            f"  {'✅' if self.deep_research_available else '❌'} Deep research",
+            f"  {'✅' if self.telegraph_available else '❌'} Telegraph publishing\n",
             "**Data:**",
             f"  🧠 Memories: {self.memory_count}",
             f"  📡 Monitors: {self.monitor_count}",

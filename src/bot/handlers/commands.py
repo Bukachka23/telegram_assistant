@@ -12,11 +12,12 @@ from bot.config.constants import (
     MONITOR_COMMAND_MIN_PARTS,
     VAULT_COMMAND_MIN_PARTS,
 )
-from bot.domain.exceptions import LLMError
+from bot.domain.exceptions import LLMError, TelegraphError
 from bot.domain.models import ForwardedChatLike, MonitorDisplay
 from bot.domain.protocols import DeepResearchServiceProtocol, MonitorServiceProtocol
 from bot.services.conversation import ConversationManager
 from bot.services.formatting import split_for_telegram
+from bot.services.telegraph import TelegraphPublishService
 from bot.shared.agents.registry import (
     get_agent,
     get_agent_by_command,
@@ -183,6 +184,7 @@ def setup_commands(  # noqa: PLR0915
     monitor_service: MonitorServiceProtocol,
     deep_research: DeepResearchServiceProtocol | None = None,
     health: "HealthService | None" = None,
+    telegraph: TelegraphPublishService | None = None,
 ) -> Router:
     """Configure command handlers with dependencies."""
     router = Router(name="commands")
@@ -304,6 +306,23 @@ def setup_commands(  # noqa: PLR0915
         )
 
         if answer:
+            if telegraph:
+                try:
+                    result = await telegraph.publish(
+                        answer,
+                        title=query[:60],
+                        model=model,
+                        agent="researcher",
+                    )
+                except TelegraphError:
+                    logger.warning("Telegraph publish failed for deep research")
+                    await message.answer("⚠️ Telegra.ph unavailable, sending inline.")
+                else:
+                    await message.answer(
+                        f"{result.preview}\n\n📄 Deep research: {result.url}",
+                    )
+                    return
+
             for chunk in split_for_telegram(answer):
                 await message.answer(chunk, parse_mode="HTML")
 

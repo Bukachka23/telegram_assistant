@@ -22,6 +22,7 @@ from bot.handlers import OwnerOnlyMiddleware
 from bot.handlers.commands import setup_commands
 from bot.handlers.messages import setup_messages
 from bot.infrastructure.openrouter.openrouter import OpenRouterClient
+from bot.infrastructure.telegraph.client import TelegraphClient
 from bot.services.conversation import ConversationManager
 from bot.services.deep_research import DeepResearchService
 from bot.services.health import HealthService
@@ -29,6 +30,7 @@ from bot.services.llm import AsyncToolExecutor, LLMService
 from bot.services.memory import MemoryStore
 from bot.services.monitors import MonitorService, MonitorStore
 from bot.services.scheduler import BotSchedulerService
+from bot.services.telegraph import TelegraphPublishService
 from bot.services.vault import VaultService
 from bot.services.web_search_router import WebSearchRouter
 from bot.tools.channel_tools import register_channel_tools
@@ -136,7 +138,7 @@ def _recall_executor(memory: MemoryStore) -> AsyncToolExecutor:
     return executor
 
 
-async def run() -> None:  # noqa: PLR0914, PLR0915
+async def run() -> None:  # noqa: PLR0912, PLR0914, PLR0915
     """Initialize all components and start both clients."""
     settings = load_settings()
 
@@ -231,6 +233,31 @@ async def run() -> None:  # noqa: PLR0914, PLR0915
     health.set_deep_research_available(available=True)
     health.set_owner_user_id(settings.owner_user_id)
 
+    # --- Telegraph (optional, graceful if disabled) ---
+    telegraph_client: TelegraphClient | None = None
+    telegraph_service: TelegraphPublishService | None = None
+    if settings.telegraph.enabled:
+        telegraph_client = TelegraphClient(
+            author_name=settings.telegraph.author_name,
+            author_url=settings.telegraph.author_url,
+        )
+        try:
+            await telegraph_client.init()
+            telegraph_service = TelegraphPublishService(
+                client=telegraph_client,
+                threshold_chars=settings.telegraph.threshold_chars,
+            )
+            logger.info(
+                "Telegraph publishing enabled (threshold: %d chars)",
+                settings.telegraph.threshold_chars,
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("Telegraph account creation failed. Publishing disabled.")
+            await telegraph_client.close()
+            telegraph_client = None
+
+    health.set_telegraph_available(available=telegraph_service is not None)
+
     # --- Wire async vault tools to LLM ---
     for tool_name, executor in build_vault_async_tools(vault).items():
         llm.register_async_tool(tool_name, executor)
@@ -284,12 +311,15 @@ async def run() -> None:  # noqa: PLR0914, PLR0915
             monitor_service=monitor_service,
             deep_research=deep_research,
             health=health,
+            telegraph=telegraph_service,
         )
     )
     dp.include_router(
         setup_messages(
             llm=llm,
+            conversations=conversations,
             draft_interval_ms=settings.streaming.draft_interval_ms,
+            telegraph=telegraph_service,
         )
     )
 
@@ -308,6 +338,7 @@ async def run() -> None:  # noqa: PLR0914, PLR0915
     logger.info("Model: %s", settings.llm.default_model)
     logger.info("Vault: %s", settings.vault.path)
     logger.info("Telethon: %s", "connected" if userbot else "disabled")
+    logger.info("Telegraph: %s", "enabled" if telegraph_service else "disabled")
     logger.info(
         "Monitors: %d channels",
         len(await monitor_service.list_monitors(settings.owner_user_id)),
@@ -324,6 +355,8 @@ async def run() -> None:  # noqa: PLR0914, PLR0915
         await memory.close()
         await monitor_store.close()
         await shared_db.close()
+        if telegraph_client:
+            await telegraph_client.close()
         if userbot:
             await cast("Awaitable[None]", userbot.disconnect())
         await bot.session.close()

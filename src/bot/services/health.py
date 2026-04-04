@@ -33,6 +33,7 @@ class HealthService:
         self._telethon_connected = False
         self._tavily_available = False
         self._deep_research_available = False
+        self._telegraph_available = False
         self._owner_user_id: int = 0
 
     def set_memory_store(self, store: MemoryStore) -> None:
@@ -55,6 +56,9 @@ class HealthService:
 
     def set_deep_research_available(self, *, available: bool) -> None:
         self._deep_research_available = available
+
+    def set_telegraph_available(self, *, available: bool) -> None:
+        self._telegraph_available = available
 
     def set_owner_user_id(self, owner_id: int) -> None:
         self._owner_user_id = owner_id
@@ -83,6 +87,7 @@ class HealthService:
             telethon_connected=self._telethon_connected,
             tavily_available=self._tavily_available,
             deep_research_available=self._deep_research_available,
+            telegraph_available=self._telegraph_available,
             errors=errors,
         )
 
