@@ -6,12 +6,13 @@ from typing import Any
 import httpx
 
 from bot.domain.exceptions import LLMError
-from bot.domain.models import StreamDelta, ToolCall
+from bot.domain.models import StreamDelta, TokenUsage, ToolCall
 
 
 async def parse_sse(response: httpx.Response) -> AsyncIterator[StreamDelta]:
     """Parse SSE stream into StreamDelta objects."""
     tool_calls_acc: dict[int, dict] = {}
+    last_usage: TokenUsage | None = None
 
     async for data in iter_sse_data(response):
         if data == "[DONE]":
@@ -25,17 +26,21 @@ async def parse_sse(response: httpx.Response) -> AsyncIterator[StreamDelta]:
         delta = choice.get("delta", {})
         finish = choice.get("finish_reason")
 
+        usage = _extract_usage(chunk)
+        if usage is not None:
+            last_usage = usage
+
         accumulate_tool_calls(delta.get("tool_calls", []), tool_calls_acc)
 
         text = delta.get("content") or ""
         if text:
-            yield StreamDelta(text=text, finish_reason=finish)
+            yield StreamDelta(text=text, finish_reason=finish, usage=usage)
         elif finish and not tool_calls_acc:
-            yield StreamDelta(finish_reason=finish)
+            yield StreamDelta(finish_reason=finish, usage=usage)
 
     # Yield accumulated tool calls if any after stream ends or [DONE] is received
     if tool_calls_acc:
-        yield StreamDelta(tool_calls=build_tool_calls(tool_calls_acc))
+        yield StreamDelta(tool_calls=build_tool_calls(tool_calls_acc), usage=last_usage)
 
 
 def build_payload(messages: list[dict], model: str, tools: list[dict] | None, temperature: float, max_tokens: int) \
@@ -105,3 +110,16 @@ def build_tool_calls(acc: dict[int, dict]) -> list[ToolCall]:
         )
         for tc in sorted(acc.values(), key=operator.itemgetter("id"))
     ]
+
+
+def _extract_usage(chunk: dict) -> TokenUsage | None:
+    """Extract token usage from a chunk if present."""
+    usage = chunk.get("usage")
+    if not usage:
+        return None
+    return TokenUsage(
+        prompt_tokens=usage.get("prompt_tokens", 0),
+        completion_tokens=usage.get("completion_tokens", 0),
+        total_tokens=usage.get("total_tokens", 0),
+        cost=usage.get("cost"),
+    )
