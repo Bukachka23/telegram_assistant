@@ -125,7 +125,7 @@ async def _stream_response(
         return
 
     # Try Telegraph for long responses
-    if telegraph and telegraph.should_publish(accumulated):
+    if telegraph and conversations.is_telegraph_enabled(user_id) and telegraph.should_publish(accumulated):
         try:
             result = await telegraph.publish(
                 accumulated,

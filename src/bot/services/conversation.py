@@ -73,6 +73,16 @@ class ConversationManager:
         """Switch the active agent for a user's session."""
         self.get_or_create(user_id).active_agent = agent_name
 
+    def is_telegraph_enabled(self, user_id: int) -> bool:
+        """Return whether Telegraph publishing is enabled for this session."""
+        return self.get_or_create(user_id).telegraph_enabled
+
+    def toggle_telegraph(self, user_id: int) -> bool:
+        """Toggle Telegraph publishing for a user's session. Returns the new state."""
+        session = self.get_or_create(user_id)
+        session.telegraph_enabled = not session.telegraph_enabled
+        return session.telegraph_enabled
+
     def clear(self, user_id: int) -> None:
         """Clear a user's conversation history."""
         self._sessions.pop(user_id, None)

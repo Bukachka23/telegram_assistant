@@ -28,6 +28,7 @@ class Conversation:
     messages: list[Message] = field(default_factory=list)
     model: str = ""
     active_agent: str = "default"
+    telegraph_enabled: bool = True
     last_active: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def add(self, message: Message) -> None:

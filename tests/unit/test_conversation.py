@@ -140,3 +140,23 @@ def test_tool_message_format() -> None:
 
     assert tool_message["tool_call_id"] == "call_1"
     assert tool_message["role"] == "tool"
+
+
+def test_telegraph_enabled_by_default() -> None:
+    manager = _make_manager()
+    assert manager.is_telegraph_enabled(1) is True
+
+
+def test_toggle_telegraph_disables_and_enables() -> None:
+    manager = _make_manager()
+    assert manager.toggle_telegraph(1) is False
+    assert manager.is_telegraph_enabled(1) is False
+    assert manager.toggle_telegraph(1) is True
+    assert manager.is_telegraph_enabled(1) is True
+
+
+def test_telegraph_toggle_is_per_user() -> None:
+    manager = _make_manager()
+    manager.toggle_telegraph(1)  # disable for user 1
+    assert manager.is_telegraph_enabled(1) is False
+    assert manager.is_telegraph_enabled(2) is True  # user 2 unaffected

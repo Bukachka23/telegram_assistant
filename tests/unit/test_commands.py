@@ -444,3 +444,61 @@ async def test_unknown_slash_command_returns_help(
     assert "Unknown command" in text
     assert "/unknownagent" in text
     assert kwargs["parse_mode"] == "Markdown"
+
+
+class FakeTelegraphService:
+    """Minimal stub for TelegraphPublishService."""
+
+
+@pytest.mark.asyncio
+async def test_telegraph_toggle_disables_and_enables(
+    conversations: ConversationManager,
+    monitor_service: FakeMonitorService,
+) -> None:
+    telegraph = FakeTelegraphService()
+    router = setup_commands(conversations, monitor_service, telegraph=telegraph)
+    handler = _get_handler(router, "cmd_telegraph")
+
+    # Default is enabled, first toggle disables
+    message = FakeMessage("/telegraph")
+    await handler(message)
+    text, _ = message.answers[0]
+    assert "disabled" in text
+    assert not conversations.is_telegraph_enabled(1)
+
+    # Second toggle re-enables
+    message2 = FakeMessage("/telegraph")
+    await handler(message2)
+    text2, _ = message2.answers[0]
+    assert "enabled" in text2
+    assert conversations.is_telegraph_enabled(1)
+
+
+@pytest.mark.asyncio
+async def test_telegraph_command_without_service_shows_not_configured(
+    conversations: ConversationManager,
+    monitor_service: FakeMonitorService,
+) -> None:
+    router = setup_commands(conversations, monitor_service, telegraph=None)
+    handler = _get_handler(router, "cmd_telegraph")
+    message = FakeMessage("/telegraph")
+
+    await handler(message)
+
+    text, _ = message.answers[0]
+    assert "not configured" in text
+
+
+@pytest.mark.asyncio
+async def test_start_command_mentions_telegraph(
+    conversations: ConversationManager,
+    monitor_service: FakeMonitorService,
+) -> None:
+    router = setup_commands(conversations, monitor_service)
+    handler = _get_handler(router, "cmd_start")
+    message = FakeMessage("/start")
+
+    await handler(message)
+
+    text, _ = message.answers[0]
+    assert "/telegraph" in text

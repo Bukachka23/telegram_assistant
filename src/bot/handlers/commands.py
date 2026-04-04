@@ -200,6 +200,7 @@ def setup_commands(  # noqa: PLR0915
             "`/assistant`, `/explanatory`, `/math_tutor`, `/researcher` — direct agent mode switches\n"
             "`/model` — show or switch LLM model\n"
             "`/deep <question>` — run multi-cycle deep research\n"
+            "`/telegraph` — toggle Telegra.ph publishing for long responses\n"
             "`/status` — system health check\n"
             "`/monitor` — list active monitors\n"
             "`/monitor add @channel kw1, kw2` — monitor a public channel\n"
@@ -266,6 +267,18 @@ def setup_commands(  # noqa: PLR0915
         conversations.clear(message.from_user.id)
         await message.answer("🗑 Conversation cleared.")
 
+    @router.message(Command("telegraph"))
+    async def cmd_telegraph(message: Message) -> None:
+        if not message.from_user:
+            return
+        if telegraph is None:
+            await message.answer("⚠️ Telegra.ph publishing is not configured.")
+            return
+        new_state = conversations.toggle_telegraph(message.from_user.id)
+        icon = "✅" if new_state else "❌"
+        label = "enabled" if new_state else "disabled"
+        await message.answer(f"{icon} Telegra.ph publishing **{label}**", parse_mode="Markdown")
+
     @router.message(Command("status"))
     async def cmd_status(message: Message) -> None:
         if not message.from_user:
@@ -306,7 +319,7 @@ def setup_commands(  # noqa: PLR0915
         )
 
         if answer:
-            if telegraph:
+            if telegraph and conversations.is_telegraph_enabled(user_id):
                 try:
                     result = await telegraph.publish(
                         answer,
