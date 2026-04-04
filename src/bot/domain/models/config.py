@@ -52,6 +52,13 @@ class SchedulerConfig(BaseModel):
     tz_offset_hours: int = 0
 
 
+class TelegraphConfig(BaseModel):
+    enabled: bool = True
+    threshold_chars: int = 8000
+    author_name: str = "Telegram Assistant"
+    author_url: str = ""
+
+
 class ForwardedChat(Protocol):
     id: int
     title: str

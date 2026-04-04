@@ -1,4 +1,4 @@
-from bot.shared.constants import ASYNC_TOOL_PREFIX
+from bot.config.constants import ASYNC_TOOL_PREFIX
 from bot.tools.registry import ToolRegistry
 
 
@@ -9,7 +9,11 @@ def register_web_tools(registry: ToolRegistry) -> None:
         description=(
             "Search the web for real-time information. "
             "Use when you need current news, live data, prices, recent events, "
-            "or anything beyond your training data."
+            "or anything beyond your training data. "
+            "source=auto (default) routes automatically based on query keywords. "
+            "Use source=github for repos/code, source=huggingface for ML models, "
+            "source=stackoverflow for programming Q&A, source=arxiv for research papers, "
+            "source=wikipedia for factual definitions and background."
         ),
         parameters={
             "type": "object",
@@ -21,6 +25,11 @@ def register_web_tools(registry: ToolRegistry) -> None:
                 "max_results": {
                     "type": "integer",
                     "description": "Number of results to return (default 5, max 20)",
+                },
+                "source": {
+                    "type": "string",
+                    "description": "Search source: auto, web, github, huggingface, stackoverflow, arxiv, wikipedia",
+                    "enum": ["auto", "web", "github", "huggingface", "stackoverflow", "arxiv", "wikipedia"],
                 },
             },
             "required": ["query"],

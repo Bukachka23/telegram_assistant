@@ -1,5 +1,7 @@
 """Tests for MemoryStore and memory tools."""
 
+from collections.abc import AsyncGenerator
+
 import pytest
 
 from bot.services.memory import MemoryStore
@@ -8,7 +10,7 @@ from bot.tools.registry import ToolRegistry
 
 
 @pytest.fixture
-async def store(tmp_path) -> MemoryStore:
+async def store(tmp_path) -> AsyncGenerator[MemoryStore, None]:
     db_path = str(tmp_path / "memory.db")
     s = MemoryStore(db_path)
     await s.init()

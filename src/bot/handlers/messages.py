@@ -6,10 +6,10 @@ from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import Message
 
+from bot.config.constants import MAX_TG_TEXT
 from bot.domain.exceptions import LLMError
-from bot.services.formatting import md_to_tg_html
+from bot.services.formatting import split_for_telegram
 from bot.services.llm import LLMService
-from bot.shared.constants import MAX_TG_TEXT
 
 logger = logging.getLogger(__name__)
 
@@ -65,10 +65,15 @@ async def _send_draft(*, bot: Bot, chat_id: int, draft_id: int, text: str) -> bo
 
 
 async def _send_formatted(*, bot: Bot, chat_id: int, text: str) -> None:
-    """Send final message with HTML formatting, fallback to plain."""
+    """Send final message with HTML formatting, splitting if too long."""
+    chunks = split_for_telegram(text)
+    if not chunks:
+        await bot.send_message(chat_id=chat_id, text=_clip(text))
+        return
+
     try:
-        html = md_to_tg_html(text)
-        await bot.send_message(chat_id=chat_id, text=_clip(html), parse_mode=ParseMode.HTML)
+        for chunk in chunks:
+            await bot.send_message(chat_id=chat_id, text=chunk, parse_mode=ParseMode.HTML)
     except TelegramAPIError:
         logger.debug("HTML send failed, falling back to plain text")
         await bot.send_message(chat_id=chat_id, text=_clip(text))

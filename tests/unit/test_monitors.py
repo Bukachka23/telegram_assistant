@@ -1,6 +1,7 @@
 """Tests for persisted channel monitor storage."""
 
 import asyncio
+from collections.abc import AsyncGenerator
 from types import SimpleNamespace
 
 import pytest
@@ -9,7 +10,7 @@ from bot.services.monitors import MonitorService, MonitorStore
 
 
 @pytest.fixture
-async def store(tmp_path) -> MonitorStore:
+async def store(tmp_path) -> AsyncGenerator[MonitorStore, None]:
     monitor_store = MonitorStore(str(tmp_path / "monitors.db"))
     await monitor_store.init()
     yield monitor_store

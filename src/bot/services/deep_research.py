@@ -1,14 +1,12 @@
-"""Multi-cycle deep research orchestration."""
-
 from __future__ import annotations
 
+import re
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from bot.services.llm import LLMService
-from bot.shared.agents.registry import get_agent, get_default_agent
-from bot.shared.constants import DEEP_RESEARCH_MAX_CYCLES
-from bot.shared.prompt.deep_research_prompt import (
+from bot.config.constants import DEEP_RESEARCH_MAX_CYCLES, JUDGE_MAX_TOKENS, SUMMARY_LIMIT
+from bot.domain.models import JudgeDecision, ResearchState
+from bot.prompts import (
     DEEP_RESEARCH_CYCLE_SYSTEM_PROMPT,
     DEEP_RESEARCH_JUDGE_SYSTEM_PROMPT,
     DEEP_RESEARCH_SYNTHESIS_SYSTEM_PROMPT,
@@ -16,36 +14,19 @@ from bot.shared.prompt.deep_research_prompt import (
     build_judge_prompt,
     build_synthesis_prompt,
 )
+from bot.shared.agents.registry import get_agent, get_default_agent
+
+if TYPE_CHECKING:
+    from bot.domain.protocols import LLMServiceProtocol
 
 ProgressCallback = Callable[[str], Awaitable[None]]
-
-_SUMMARY_LIMIT = 220
-_JUDGE_MAX_TOKENS = 120
-
-
-@dataclass
-class ResearchState:
-    """Mutable state for a single deep research session."""
-
-    query: str
-    max_cycles: int
-    cycle: int = 0
-    scratchpad: list[str] = field(default_factory=list)
-    cycle_summaries: list[str] = field(default_factory=list)
-
-
-@dataclass(frozen=True)
-class JudgeDecision:
-    """Structured decision returned by the judge step."""
-
-    should_stop: bool
-    reason: str
+_RE_WHITESPACE = re.compile(r"\s+")
 
 
 class DeepResearchService:
-    """Runs an autoresearch-style multi-cycle research loop."""
+    """Runs an auto research-style multi-cycle research loop."""
 
-    def __init__(self, llm: LLMService) -> None:
+    def __init__(self, llm: LLMServiceProtocol) -> None:
         self._llm = llm
         self._researcher = get_agent("researcher") or get_default_agent()
 
@@ -120,7 +101,7 @@ class DeepResearchService:
             model=model,
             allowed_tools=None,
             temperature=0.0,
-            max_tokens=_JUDGE_MAX_TOKENS,
+            max_tokens=JUDGE_MAX_TOKENS,
         )
         return self._parse_judge_response(response)
 
@@ -149,12 +130,12 @@ class DeepResearchService:
 
     @staticmethod
     def _build_cycle_summary(findings: str) -> str:
-        cleaned = " ".join(findings.split())
+        cleaned = _RE_WHITESPACE.sub(" ", findings).strip()
         if not cleaned:
             return "No material findings returned in this cycle."
-        if len(cleaned) <= _SUMMARY_LIMIT:
+        if len(cleaned) <= SUMMARY_LIMIT:
             return cleaned
-        return cleaned[: _SUMMARY_LIMIT - 1].rstrip() + "…"
+        return cleaned[: SUMMARY_LIMIT - 1].rstrip() + "…"
 
     @staticmethod
     def _parse_judge_response(response: str) -> JudgeDecision:

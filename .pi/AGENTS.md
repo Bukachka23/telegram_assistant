@@ -1,417 +1,278 @@
-# AGENTS.md - AI Coding Agent Guide
+# AGENTS.md — Telegram Assistant
 
-This document provides essential information for AI coding agents working on this project.
+> Project instructions for the pi coding agent. Loaded automatically at startup.
 
 ## Project Overview
 
-**Single Address Notifier** (also known as `signer-service`) is a Django-based blockchain transaction processing service for EVM-compatible chains. It monitors blockchain addresses, processes deposits/withdrawals, manages token balances, and handles fund sweeping operations between hot and cold wallets.
+Personal Telegram bot powered by OpenRouter LLM with tool calling, Obsidian vault integration, Telegram channel monitoring, a cron-based scheduler, and long-term memory. It is a **single-user (owner-only)** bot — all messages from non-owner users are silently dropped by middleware.
 
-The service integrates with:
-- An exchange platform (via REST API)
-- A private key manager service for transaction signing
-- PostgreSQL for data persistence
-- Redis for Celery task queuing
+**Framework:** aiogram 3.x (bot) + Telethon (userbot for channel access)
+**Python:** 3.11+
+**Database:** SQLite via `aiosqlite` (FTS5 virtual table for memory search)
+**Key integrations:** OpenRouter (LLM), Tavily / GitHub / HuggingFace / StackOverflow / arXiv / Wikipedia (search), Obsidian vault (local filesystem), croniter (scheduling)
 
-## Technology Stack
+---
 
-| Component | Technology |
-|-----------|------------|
-| Backend Framework | Django 4.2 |
-| API Framework | Django REST Framework |
-| Task Queue | Celery 5.3.4 + django-celery-beat |
-| Message Broker | Redis |
-| Database | PostgreSQL |
-| Blockchain | Web3.py 5.31.3 |
-| Python Version | 3.12.4 |
-| WSGI Server | Gunicorn |
-| Testing | pytest + pytest-django |
-| Linting/Formatting | Ruff |
-
-## Architecture Overview
-
-### Core Modules
-
-The project follows Django's app-based architecture with 6 main modules:
+## Repository Structure
 
 ```
-scanner_core/         # Django project configuration
-├── settings/         # Environment-specific settings
-├── celery.py         # Celery configuration and periodic tasks
-├── urls.py           # URL routing
-├── wsgi.py           # WSGI entry point
+src/bot/
+├── main.py              # Entry point — wires all components and starts polling
+├── config/              # Settings (pydantic-settings), agent definitions, constants
+│   ├── config.py        # load_settings() — merges .env + config.yaml
+│   ├── constants.py     # All magic numbers and shared strings
+│   ├── agents.py        # AgentProfile definitions (default, explanatory, math_tutor, researcher)
+│   └── agent_registry.py# get_agent(), get_default_agent(), list_agents()
+├── domain/              # Pure Python domain layer — no I/O, no framework imports
+│   ├── models/          # Dataclasses: Message, Conversation, Tool, AgentProfile, Note, etc.
+│   ├── exceptions.py    # BotError, VaultError, LLMError, ChannelError, WebSearchError
+│   └── protocols.py     # Structural protocols: TelegramEntity, MonitorResolver, SupportsGetEntity
+├── handlers/            # aiogram routers (thin layer — delegate to services)
+│   ├── commands.py      # All slash commands
+│   ├── messages.py      # Catch-all message handler (streaming LLM response)
+│   ├── channels.py      # Telethon real-time monitor event handler
+│   └── middleware.py    # OwnerOnlyMiddleware
+├── infrastructure/      # External adapters — I/O only, no business logic
+│   ├── openrouter/      # OpenRouter HTTP client (streaming completions)
+│   ├── search/          # Search clients: tavily, github, huggingface, stackoverflow, arxiv, wikipedia
+│   ├── storage/         # monitor_storage.py — SQLite CRUD for channel_monitors table
+│   ├── telethon/        # Telethon client factory
+│   └── scheduler_core.py# Thread-based PersistentScheduler with JSON job file
+├── prompts/             # LLM system prompt strings — pure text, no logic
+├── services/            # Core business logic
+│   ├── llm.py           # LLMService — tool-calling loop, streaming, agent orchestration
+│   ├── conversation.py  # ConversationManager — per-user session, history, model, agent
+│   ├── memory.py        # MemoryStore — SQLite FTS5 long-term memory
+│   ├── vault.py         # VaultService — Obsidian markdown CRUD + full-text search
+│   ├── channels.py      # ChannelService — Telethon message fetch/search with retry
+│   ├── monitors.py      # MonitorService — monitor setup, pending-add flow, resolution
+│   ├── scheduler.py     # BotSchedulerService — bridges thread scheduler with async bot loop
+│   ├── deep_research.py # DeepResearchService — multi-cycle research loop (run/judge/synthesize)
+│   ├── web_search_router.py # Routes queries to the best search source by keyword
+│   ├── health.py        # HealthService — /status report
+│   └── formatting.py    # split_for_telegram() — chunks long text for Telegram limits
+├── shared/              # Cross-cutting utilities
+│   ├── agents/          # registry.py — re-exports agent_registry functions
+│   └── decorators.py    # enforce_timeout, retry_with_backoff
+└── tools/               # LLM tool definitions (schema + sync stub)
+    ├── registry.py      # ToolRegistry — register(), execute(), to_openrouter_schema()
+    ├── vault_tools.py   # Vault tool schemas + build_vault_async_tools()
+    ├── channel_tools.py # Channel tool schemas
+    ├── web_tools.py     # Web search tool schema
+    ├── memory_tools.py  # Memory tool schemas
+    └── scheduler_tools.py # Scheduler tool schemas + executor builders
 
-balance_management/   # Deposit/withdrawal processing
-├── models.py         # Transaction models (Deposit, Withdraw, Address)
-├── tasks.py          # Celery tasks for withdrawals
-├── views.py          # API endpoints
-└── db.py             # Database operations
+scripts/
+└── auth_telethon.py     # One-time Telethon session authentication
 
-exchange_notifier/    # Exchange integration
-├── tasks.py          # Notification and confirmation tasks
-├── business.py       # Core business logic
-└── models.py         # DynamicOptions model
-
-sweeps/               # Fund sweeping operations
-├── models.py         # SweepTransaction, GasTransaction models
-├── tasks.py          # Sweep periodic tasks
-├── business.py       # Sweep logic
-└── enums.py          # Transaction status enums
-
-token_management/     # ERC-20 token handling
-├── models.py         # Token model with contract info
-└── tasks.py          # Token balance update tasks
-
-app_events/           # Application event logging
-├── models.py         # Event storage
-└── tasks.py          # Event processing tasks
-
-common/               # Shared utilities
-├── utils.py          # Helper functions
-├── validators.py     # Input validation
-├── decorators.py     # Custom decorators
-├── logger.py         # Application logging
-└── crypto/           # Encryption/decryption middleware
-```
-
-### Data Flow
-
-1. **Deposits**: External scanner → Redis → exchange_notifier detects → balance_management stores → notifies exchange
-2. **Withdrawals**: Exchange API → balance_management creates tx → private key manager signs → blockchain
-3. **Sweeps**: Periodic Celery tasks scan balances → sweep to hot/cold wallets based on thresholds
-
-## Configuration
-
-### Environment Variables
-
-Key required environment variables (see `env/env_example`):
-
-```bash
-# Blockchain
-ETH_NODE_CREDENTIALS=    # RPC endpoint
-CHAIN_ID=               # Network chain ID
-TICKER=                 # Currency symbol (ETH, BNB, etc.)
-DECIMALS=               # Token decimals
-CONFIRMATIONS=          # Block confirmations required
-
-# Wallets
-MASTER_ADDRESS=         # Master wallet address
-COLD_ADDRESS=           # Cold storage address
-DEEP_COLD_WALLETS=      # Additional cold wallets
-
-# External Services
-PRIVATE_KEY_MANAGER_URL=  # Signing service URL
-EXCHANGE_URL=             # Exchange API URL
-EXCHANGE_REQUEST_TOKEN=   # API authentication token
-
-# Database
-DB_HOST=, DB_NAME=, DB_USER=, DB_PASSWORD=, DB_PORT=
-
-# Redis
-REDIS_HOST=, REDIS_PORT=
-
-# Security
-SECRET_KEY=             # Django secret key
-OTP_TOKEN=              # 2FA token for sensitive operations
-
-# Gas Settings
-MAX_GASPRICE=, MIN_GASPRICE=, GAS_LIMIT=
-ETH_GAS_PRICE_PERCENT=  # Gas price multiplier
-```
-
-### Settings Structure
-
-- `scanner_core/settings/base.py` - Common settings, loads from environment
-- `scanner_core/settings/dev.py` - Local development
-- `scanner_core/settings/production.py` - Production environment
-- `scanner_core/settings/test.py` - Unit tests (SQLite, no migrations)
-- `scanner_core/settings/test_integration.py` - Integration tests (PostgreSQL)
-
-## Build and Test Commands
-
-### Setup
-
-```bash
-# Install dependencies
-make install
-
-# Run migrations
-make migrate
-```
-
-### Running the Application
-
-```bash
-# Production mode
-make run           # Starts gunicorn server
-
-# Celery worker
-make celery        # Starts Celery worker with beat scheduler
-
-# Local development
-make local_run     # Starts with debug configuration
-make local_celery  # Starts Celery in debug mode
-```
-
-### Testing
-
-```bash
-# Run all unit tests
-make test
-
-# Run with coverage
-make test-cov
-
-# Run specific module tests
-make test-sweeps
-make test-balance
-make test-common
-make test-exchange
-make test-tokens
-make test-scanner
-
-# Run tests matching keyword
-make test-k K=test_name_pattern
-
-# Run single test file
-make test-file F=tests/unit/sweeps/test_models.py
-
-# Docker-based testing
-make test-unit-docker       # Unit tests in container
-make test-integration-docker # Integration tests with real services
-```
-
-### Docker Operations
-
-```bash
-# Production build/push
-make prod_build
-make prod_push
-make prod_release  # Tags git release
-
-# Development
-make dev_build
-make dev_push
-```
-
-## Code Style Guidelines
-
-### Linting with Ruff
-
-The project uses Ruff with extensive rule configuration in `pyproject.toml`:
-
-```bash
-# Run linter
-ruff check .
-
-# Run formatter
-ruff format .
-
-# Auto-fix issues
-ruff check . --fix
-```
-
-### Key Style Rules
-
-- **Line length**: 120 characters
-- **Quotes**: Double quotes for strings
-- **Indentation**: 4 spaces
-- **Import style**: Sorted with `isort` rules via Ruff
-
-### Ignored Rules (Intentional)
-
-- `D10x` - Missing docstrings (modules, classes, functions)
-- `COM812` - Trailing comma requirements
-- `ANN002/003` - `*args`/`**kwargs` annotations not required
-- `G004` - f-strings in logging allowed
-- `PLR0913` - Multiple function arguments allowed
-
-### Pre-commit Hooks
-
-```bash
-# Install hooks
-pre-commit install
-
-# Run manually
-pre-commit run --all-files
-```
-
-## Testing Instructions
-
-### Test Organization
-
-```
 tests/
-├── unit/              # Fast tests, no external dependencies
-│   ├── conftest.py    # Shared fixtures
-│   ├── test_*.py      # Test modules mirroring src structure
-├── integration/       # Tests requiring DB, Redis, external APIs
-│   ├── fixtures.py    # Integration test fixtures
-│   └── test_*.py      # Integration tests
+├── unit/                # Unit tests (all async, pytest-asyncio)
+└── *.py                 # Legacy integration-style tests
+
+config.example.yaml      # Template for config.yaml
+.env.example             # Template for .env secrets
+Makefile                 # dev commands (test, lint, docker)
+Dockerfile               # Multi-stage Python 3.12-slim build
 ```
 
-### Writing Tests
+---
 
-```python
-# Use pytest markers
-@pytest.mark.unit           # Fast, isolated tests (default)
-@pytest.mark.integration    # Requires external services
-@pytest.mark.slow          # Long-running tests
+## Architecture & Patterns
 
-# Mock external services - NEVER make real network calls in unit tests
-from unittest.mock import MagicMock, patch
+**Layering:** `domain` → `config` → `services` → `infrastructure` → `handlers`
 
-# Use fixtures from conftest.py
-@pytest.fixture
-def mock_token():
-    token = MagicMock(spec=Token)
-    token.symbol = "TEST"
-    return token
-```
+- Business logic lives exclusively in `services/`. Handlers are thin — they parse Telegram input and call a service method.
+- `domain/` is framework-free. No aiogram, no aiosqlite, no httpx.
+- `infrastructure/` is I/O-only. No business decisions, no domain rules.
 
-### Critical Testing Rules
+### Two-Tier Tool Execution (critical)
 
-1. **Never make real network calls in unit tests** - Always mock Web3 clients, HTTP requests
-2. **Database**: Unit tests use SQLite in-memory; integration tests use PostgreSQL
-3. **Migrations**: Disabled in unit tests for speed (`MIGRATION_MODULES = DisableMigrations()`)
-4. **Rate limiting**: Disabled in tests (`WEB3_RATE_LIMIT_ENABLED = False`)
+Tools that only need sync computation are registered directly in `ToolRegistry` with a sync callable. Tools that require `await` (vault, channels, web search, memory, scheduler) use a **two-step pattern**:
 
-### Coverage Requirements
+1. Register a sync stub in `ToolRegistry` that returns `"ASYNC_TOOL:<name>"` (the `ASYNC_TOOL_PREFIX` sentinel).
+2. Register an async executor in `LLMService` via `register_async_tool(name, executor)`.
+
+`LLMService._execute_single_tool()` detects the sentinel and delegates to the async executor. **Never register a coroutine directly as a sync tool.**
+
+### Agent System
+
+Each `AgentProfile` (in `config/agents.py`) has:
+- `prompt` — system prompt string from `prompts/`
+- `allowed_tools` — list of tool names this agent may call
+- `temperature`, `max_tokens` — per-agent LLM settings
+
+`LLMService` reads the active agent from `ConversationManager` on every message. To add a new agent: add a profile to `AGENTS` dict in `config/agents.py` and add its prompt to `prompts/`.
+
+### Config Loading
+
+`load_settings()` in `config/config.py` merges two sources:
+- `.env` — secrets: `BOT_TOKEN`, `OPENROUTER_API_KEY`, `TAVILY_API_KEY`, `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `OWNER_USER_ID`
+- `config.yaml` — settings: LLM model, vault path, conversation timeouts, streaming interval, scheduler TZ
+
+`VAULT_PATH` env var overrides `config.yaml` (for Docker). Never hard-code paths — always go through `Settings`.
+
+### Telethon (optional)
+
+Telethon is loaded lazily and is entirely optional. If `userbot.session` is missing or expired, channel features (`fetch_messages`, `search_channel`, monitors) are disabled — the bot continues running with all other features intact.
+
+---
+
+## How to Run
 
 ```bash
-# Generate HTML coverage report
-make test-cov-html
-# Opens at htmlcov/index.html
+# Install (editable + dev extras)
+pip install -e ".[dev]"
+
+# Configure
+cp config.example.yaml config.yaml   # Edit: LLM model, vault path, timezone
+cp .env.example .env                  # Edit: tokens, API keys, OWNER_USER_ID
+
+# (Optional) Authenticate Telethon for channel features
+python scripts/auth_telethon.py
+
+# Run
+telegram-assistant
+# or
+python -m bot.main
 ```
-
-## Security Considerations
-
-### Critical Security Points
-
-1. **Private Keys**: NEVER stored in this service. All signing goes to `PRIVATE_KEY_MANAGER_URL`
-2. **API Authentication**: 
-   - `EXCHANGE_REQUEST_TOKEN` for exchange API
-   - `OTP_TOKEN` for sensitive operations
-3. **Encryption**: `DecryptAllPayloadMiddleware` decrypts incoming requests
-4. **Cold Wallets**: Multiple cold wallet types supported (DEFAULT, BINANCE, DEEP_COLD)
-
-### Environment Security
-
-- Never commit `.env` files
-- Use strong `SECRET_KEY` in production
-- Restrict access to private key manager service
-
-### Transaction Security
-
-- Gas price limits (`MIN_GASPRICE`, `MAX_GASPRICE`)
-- Rate limiting on Web3 requests to prevent credit exhaustion
-- Transaction confirmation requirements (`CONFIRMATIONS`)
-
-## Deployment Process
-
-### GitLab CI/CD Pipeline
-
-```yaml
-Stages: test → build → deploy → release
-
-1. build-web-image    # Docker image build
-2. deploy-web-to-ecr  # Push to AWS ECR
-3. release-web-and-celery-on-vps  # SSH deployment
-```
-
-### Manual Deployment
 
 ```bash
-# Update version
-export IMAGE_VERSION=x.x.x
-
-# Build and push
-make prod_build
-make prod_push
-
-# Tag release
-make prod_release
+# Docker
+make build
+make run          # starts in background
+make logs         # follow logs
+make down         # stop + remove volumes
 ```
 
-### Docker Compose Services
+**Runtime data** is stored in `data/`: `memory.db`, `jobs.json`, `userbot.session`.
 
-- `db` - PostgreSQL 15.3
-- `redis` - Redis for Celery
-- `web` - Django application (gunicorn)
-- `celery` - Celery worker + beat scheduler
+---
 
-## Key Business Logic
-
-### Sweep Operations
-
-Sweeps move funds from user addresses to hot/cold wallets:
-
-1. **Sweep to Hot**: Periodic task moves funds from deposit addresses to hot wallet
-2. **Sweep to Cold**: Moves excess funds from hot to cold storage
-3. **Token Sweeps**: ERC-20 token transfers with allowance handling
-
-### Transaction Status Flow (GasTransaction)
-
-- `Created (0)` → `Success (1)` or `Pending (2)`
-- On error: `ReceiptNotFound (3)`, `InvalidReceiptStatus (4)`, `UnhandledError (5)`
-
-### Confirmation Logic
-
-Deposits require `CONFIRMATIONS` blocks before being marked confirmed and notified to exchange.
-
-## Common Tasks
-
-### Adding a New Celery Task
-
-1. Define task in `<app>/tasks.py`
-2. Add to `scanner_core/celery.py` beat_schedule:
-```python
-app.conf.beat_schedule = {
-    "task_name": {
-        "task": "app_name.tasks.task_function",
-        "schedule": 30,  # seconds or crontab()
-    },
-}
-```
-
-### Adding a New Model
-
-1. Define model in `<app>/models.py`
-2. Create migration: `python manage.py makemigrations`
-3. Apply: `python manage.py migrate`
-4. Add to admin if needed: `<app>/admin.py`
-
-### Adding API Endpoints
-
-1. Define views in `<app>/views.py` or `<app>/api_handlers.py`
-2. Add URL patterns in `<app>/urls.py`
-3. Include in `scanner_core/urls.py`
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Celery not processing tasks**: Check Redis connection, verify task routing
-2. **Database locked**: PostgreSQL connection limits, check `max_connections`
-3. **Web3 rate limiting**: Check `WEB3_RATE_LIMIT_ENABLED` and adjust thresholds
-4. **Migration errors**: Ensure `django_celery_beat` migrations applied
-
-### Logs
+## How to Test
 
 ```bash
-# Django logs
-python manage.py runserver  # Debug mode
+# All tests
+make test
+# or: pytest tests
 
-# Celery logs
-celery -A scanner_core worker -l debug
+# With coverage
+make test-cov
+# or: pytest tests --cov=src
 
-# Gunicorn logs
-gunicorn -c gunicorn.conf.py --log-level debug
+# Single file
+pytest tests/unit/test_llm.py -v
+
+# Single test
+pytest tests/unit/test_llm.py::test_name -v
 ```
 
-## Important Notes
+Test conventions:
+- All tests are `async def` — `asyncio_mode = "auto"` handles it automatically.
+- Mock external I/O (OpenRouter, aiosqlite, Telethon) — never make real API calls.
+- `PYTHONPATH=src` is set via `pyproject.toml`; no manual path manipulation needed.
+- `tests/` ignores `ANN`, `ARG`, `S101`, `SLF001` rules — don't add type hints to test files.
 
-1. **Language**: Codebase primarily uses English for code/comments. Documentation may include Russian.
-2. **No Alembic**: Uses Django migrations, not Alembic (excluded from Ruff checks).
-3. **Rate Limiting**: Web3 requests are rate-limited by default to prevent API credit exhaustion.
-4. **Decimal Precision**: Always use `Decimal` for monetary calculations (max_digits=100, decimal_places=18).
-5. **Address Checksumming**: All addresses are converted to checksum format via Web3.py.
+---
+
+## Code Style & Linting
+
+```bash
+make ruff_check    # ruff check .
+make ruff_fix      # ruff check --fix .
+make ruff_format   # ruff format .
+```
+
+**Rules:**
+- Line length: **120** characters
+- Quotes: **double**
+- Docstring convention: **Google** (`[lint.pydocstyle] convention = "google"`)
+- `ruff.toml` is the single source of truth — do not add `.flake8` or `setup.cfg`
+- Docstrings are NOT required on every function (D100–D107 are ignored), but write them on public service methods
+- Prompt files (`prompts/*.py`) are exempt from E501 and RUF001 — long lines and special chars are intentional
+- `ERA` (eradicate) is disabled — commented-out code is allowed
+
+---
+
+## Git Workflow
+
+- **Branch naming:** `feature/short-description` or `fix/issue-description`
+- **Commits:** descriptive imperative ("Add vault search caching", not "Added caching")
+- Run `make ruff_check` and `make test` before committing
+
+**Critical git rule:**
+- NEVER use `git add -A` or `git add .`
+- Always `git add <specific files>` you modified
+
+---
+
+## Coding Conventions
+
+### Naming
+- Services: noun-based classes — `VaultService`, `MemoryStore`, `MonitorService`
+- Tools: snake_case verb-noun — `search_vault`, `fetch_messages`, `save_memory`
+- Domain models: `@dataclass(frozen=True)` for immutable records, `@dataclass` for mutable sessions
+- Constants: `UPPER_SNAKE_CASE` in `config/constants.py` — no magic numbers elsewhere
+
+### Async
+- All service methods that touch I/O must be `async def`
+- Sync filesystem operations are wrapped with `asyncio.to_thread()` (see `VaultService`)
+- Never `asyncio.run()` inside async context
+
+### Error Handling
+- Raise domain exceptions (`VaultError`, `LLMError`, `ChannelError`) from services
+- Handlers catch and convert to user-friendly messages
+- Use `logger.exception()` (not `logger.error()`) to capture tracebacks
+
+### Type Hints
+- Required on all public functions (ANN rules enabled; `*args`/`**kwargs` exempted)
+- Use `Protocol` for structural typing instead of ABCs where possible
+- Use `TYPE_CHECKING` guard for type-only imports
+
+---
+
+## Critical Rules
+
+- **NEVER** read a file partially before editing — read the whole file first.
+- **ALWAYS** run `make test` after any logic change.
+- **NEVER** commit `.env`, `config.yaml`, `*.session`, or `data/` files.
+- **ALWAYS** register async tool executors in `main.py` via `llm.register_async_tool()` — not inside service constructors.
+- **NEVER** put business logic in handlers — handlers parse input and call services only.
+- **NEVER** query SQLite directly from services — use `MemoryStore` or `MonitorStore`.
+- **ALWAYS** add new constants to `config/constants.py`, not inline.
+- **ALWAYS** add new tools to `ALL_TOOL_NAMES` in `config/agents.py` (otherwise agents can't use them).
+
+---
+
+## Key Files Reference
+
+| File | Purpose |
+|------|---------|
+| `src/bot/main.py` | Entry point — wires every component; start here to trace any feature |
+| `src/bot/config/constants.py` | All magic values — timeouts, limits, API bases, DB schema |
+| `src/bot/config/agents.py` | Agent profiles and `ALL_TOOL_NAMES` — update when adding tools/agents |
+| `src/bot/services/llm.py` | LLM orchestration — tool loop, streaming, agent switching |
+| `src/bot/tools/registry.py` | Sync tool registry — schema cache, execute dispatch |
+| `src/bot/domain/models/base.py` | `Message`, `Conversation`, `Role` — core message types |
+| `src/bot/services/memory.py` | SQLite FTS5 long-term memory store |
+| `src/bot/services/monitors.py` | Channel monitor setup (public URL + forwarded private channel) |
+| `src/bot/infrastructure/openrouter/openrouter.py` | OpenRouter streaming HTTP client |
+| `config.example.yaml` | Template — copy to `config.yaml` |
+| `ruff.toml` | Linting/formatting configuration |
+
+---
+
+## Known Gotchas
+
+- **Two-tier tool execution:** Forgetting to register an async executor via `llm.register_async_tool()` will cause the LLM to get `"ASYNC_TOOL:<name>"` as the tool result and produce garbage responses. Always wire async tools in `main.py`.
+
+- **`ALL_TOOL_NAMES` in `config/agents.py`:** New tools must be listed here or agents with `allowed_tools=list(ALL_TOOL_NAMES)` will never call them. The LLM schema filter in `LLMService._filter_tools_schema()` silently omits unrecognised names.
+
+- **Telethon negative IDs:** Telegram supergroups/channels have negative `chat_id` values (e.g. `-1001234567890`). The `MonitorStore` stores and queries by `int` — never treat them as strings.
+
+- **Conversation trim preserves system messages:** `Conversation.trim()` always keeps `Role.SYSTEM` messages at the head; only user/assistant/tool messages are pruned. Don't add extra system messages mid-conversation.
+
+- **`PROJECT_ROOT` resolution:** `constants.py` resolves the project root from `__file__` depth. If you move `constants.py`, update the `parent` chain accordingly.
+
+- **Docker vault path:** The vault is mounted as a volume. Use `VAULT_PATH` env var to override the `config.yaml` path inside the container — hardcoding paths in `config.yaml` will break Docker deployments.
+
+- **Scheduler timezone:** `BotSchedulerService` uses `tz_offset_hours` from `config.yaml`. cron expressions are interpreted in the configured timezone. Always confirm the TZ offset before testing scheduler features.

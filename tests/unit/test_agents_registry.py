@@ -1,5 +1,6 @@
 """Tests for built-in agent registry."""
 
+from bot.prompts import EXPLANATORY_PROMPT, MATH_TUTOR_PROMPT, RESEARCHER_PROMPT, SYSTEM_PROMPT
 from bot.shared.agents.registry import (
     DEFAULT_AGENT_NAME,
     get_agent,
@@ -7,10 +8,6 @@ from bot.shared.agents.registry import (
     get_default_agent,
     list_agents,
 )
-from bot.shared.prompt.explanatory_prompt import EXPLANATORY_PROMPT
-from bot.shared.prompt.math_tutor_prompt import MATH_TUTOR_PROMPT
-from bot.shared.prompt.researcher_prompt import RESEARCHER_PROMPT
-from bot.shared.prompt.system_prompt import SYSTEM_PROMPT
 
 
 def test_get_default_agent() -> None:

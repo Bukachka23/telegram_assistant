@@ -9,10 +9,12 @@ class ToolRegistry:
 
     def __init__(self) -> None:
         self._tools: dict[str, Tool] = {}
+        self._schema_cache: list[dict] | None = None
 
     def register(self, name: str, description: str, parameters: dict[str, Any], fn: Callable[..., str]) -> None:
         """Register a tool."""
         self._tools[name] = Tool(name=name, description=description, parameters=parameters, fn=fn,)
+        self._schema_cache = None  # Invalidate on registration
 
     def get(self, name: str) -> Tool | None:
         """Get a tool by name."""
@@ -29,18 +31,23 @@ class ToolRegistry:
             return f"Error: {e}"
 
     def to_openrouter_schema(self) -> list[dict]:
-        """Export all tools as OpenRouter function calling schema."""
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "parameters": tool.parameters,
-                },
-            }
-            for tool in self._tools.values()
-        ]
+        """Export all tools as OpenRouter function calling schema.
+
+        The result is cached and only rebuilt when tools are registered.
+        """
+        if self._schema_cache is None:
+            self._schema_cache = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.parameters,
+                    },
+                }
+                for tool in self._tools.values()
+            ]
+        return self._schema_cache
 
     @property
     def names(self) -> list[str]:

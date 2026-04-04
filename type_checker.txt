@@ -1,0 +1,1567 @@
+(.venv) bukachiyboss@Mac src % uvx ty check
+error[invalid-await]: `TelegramClient` is not awaitable
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/scripts/auth_telethon.py:48:11
+   |
+46 |     print("Check 'Telegram' service messages.\n")
+47 |
+48 |     await client.start()
+   |           ^^^^^^^^^^^^^^
+49 |
+50 |     me = await client.get_me()
+   |
+  ::: /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/.venv/lib/python3.14/site-packages/telethon/client/telegramclient.py:8:7
+   |
+ 8 | class TelegramClient(
+   |       -------------- type defined here
+ 9 |     AccountMethods, AuthMethods, DownloadMethods, DialogMethods, ChatMethods,
+10 |     BotMethods, MessageMethods, UploadMethods, ButtonMethods, UpdateMethods,
+   |
+info: `__await__` is missing
+info: rule `invalid-await` is enabled by default
+
+error[unresolved-attribute]: Attribute `first_name` is not defined on `InputPeerUser` in union `User | InputPeerUser`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/scripts/auth_telethon.py:51:36
+   |
+50 |     me = await client.get_me()
+51 |     print(f"\n✅ Authenticated as: {me.first_name} (ID: {me.id})")
+   |                                     ^^^^^^^^^^^^^
+52 |     print(f"📁 Session saved to: {session_path}.session")
+53 |     print(
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Attribute `id` is not defined on `InputPeerUser` in union `User | InputPeerUser`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/scripts/auth_telethon.py:51:57
+   |
+50 |     me = await client.get_me()
+51 |     print(f"\n✅ Authenticated as: {me.first_name} (ID: {me.id})")
+   |                                                          ^^^^^
+52 |     print(f"📁 Session saved to: {session_path}.session")
+53 |     print(
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Attribute `id` is not defined on `InputPeerUser` in union `User | InputPeerUser`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/scripts/auth_telethon.py:54:34
+   |
+52 |     print(f"📁 Session saved to: {session_path}.session")
+53 |     print(
+54 |         f"\n💡 Set OWNER_USER_ID={me.id} in your .env"
+   |                                   ^^^^^
+55 |         " if not already set."
+56 |     )
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/test_channel_service.py:106:30
+    |
+104 |         ]
+105 |     )
+106 |     service = ChannelService(client)
+    |                              ^^^^^^ Expected `TelegramClient`, found `FakeTelegramClient`
+107 |
+108 |     result = await service.fetch_messages("@python", query="asyncio")
+    |
+info: Method defined here
+  --> bot/services/channels.py:26:9
+   |
+24 |     """Fetches and searches messages from channels accessible to the userbot."""
+25 |
+26 |     def __init__(
+   |         ^^^^^^^^
+27 |         self,
+28 |         client: TelegramClient,
+   |         ---------------------- Parameter declared here
+29 |         *,
+30 |         monitor_service: MonitorResolver | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/test_channel_service.py:119:9
+    |
+117 |     client = SlowThenSuccessfulClient([_message("Recovered message")])
+118 |     service = ChannelService(
+119 |         client,
+    |         ^^^^^^ Expected `TelegramClient`, found `SlowThenSuccessfulClient`
+120 |         request_timeout_seconds=0.005,
+121 |         retry_max_attempts=2,
+    |
+info: Method defined here
+  --> bot/services/channels.py:26:9
+   |
+24 |     """Fetches and searches messages from channels accessible to the userbot."""
+25 |
+26 |     def __init__(
+   |         ^^^^^^^^
+27 |         self,
+28 |         client: TelegramClient,
+   |         ---------------------- Parameter declared here
+29 |         *,
+30 |         monitor_service: MonitorResolver | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/test_channel_service.py:136:9
+    |
+134 |     client = AlwaysSlowClient([_message("Never returned")])
+135 |     service = ChannelService(
+136 |         client,
+    |         ^^^^^^ Expected `TelegramClient`, found `AlwaysSlowClient`
+137 |         request_timeout_seconds=0.005,
+138 |         retry_max_attempts=2,
+    |
+info: Method defined here
+  --> bot/services/channels.py:26:9
+   |
+24 |     """Fetches and searches messages from channels accessible to the userbot."""
+25 |
+26 |     def __init__(
+   |         ^^^^^^^^
+27 |         self,
+28 |         client: TelegramClient,
+   |         ---------------------- Parameter declared here
+29 |         *,
+30 |         monitor_service: MonitorResolver | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/test_channel_service.py:156:30
+    |
+154 |         ]
+155 |     )
+156 |     service = ChannelService(client)
+    |                              ^^^^^^ Expected `TelegramClient`, found `FakeTelegramClient`
+157 |
+158 |     result = await service.search_channel("@python", query="asyncio", days=7)
+    |
+info: Method defined here
+  --> bot/services/channels.py:26:9
+   |
+24 |     """Fetches and searches messages from channels accessible to the userbot."""
+25 |
+26 |     def __init__(
+   |         ^^^^^^^^
+27 |         self,
+28 |         client: TelegramClient,
+   |         ---------------------- Parameter declared here
+29 |         *,
+30 |         monitor_service: MonitorResolver | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/test_channel_service.py:180:9
+    |
+178 |     )
+179 |     service = ChannelService(
+180 |         client,
+    |         ^^^^^^ Expected `TelegramClient`, found `FakeTelegramClient`
+181 |         monitor_service=monitor_service,
+182 |         owner_user_id=504576529,
+    |
+info: Method defined here
+  --> bot/services/channels.py:26:9
+   |
+24 |     """Fetches and searches messages from channels accessible to the userbot."""
+25 |
+26 |     def __init__(
+   |         ^^^^^^^^
+27 |         self,
+28 |         client: TelegramClient,
+   |         ---------------------- Parameter declared here
+29 |         *,
+30 |         monitor_service: MonitorResolver | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/test_channel_service.py:206:9
+    |
+204 |     )
+205 |     service = ChannelService(
+206 |         client,
+    |         ^^^^^^ Expected `TelegramClient`, found `FakeTelegramClient`
+207 |         monitor_service=monitor_service,
+208 |         owner_user_id=504576529,
+    |
+info: Method defined here
+  --> bot/services/channels.py:26:9
+   |
+24 |     """Fetches and searches messages from channels accessible to the userbot."""
+25 |
+26 |     def __init__(
+   |         ^^^^^^^^
+27 |         self,
+28 |         client: TelegramClient,
+   |         ---------------------- Parameter declared here
+29 |         *,
+30 |         monitor_service: MonitorResolver | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `chain_fallbacks` is incorrect
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/test_shared_decorators.py:67:9
+   |
+66 |     @chain_fallbacks(
+67 |         fallback_functions=[fallback_one, fallback_two],
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected `Sequence[(_: str) -> Awaitable[str]]`, found `list[((_: str) -> CoroutineType[Any, Any, str]) | ((value: str) -> CoroutineType[Any, Any, str])]`
+68 |         handled_exceptions=(LookupError,),
+69 |     )
+   |
+info: Function defined here
+  --> bot/shared/decorators/chain_fallback.py:21:5
+   |
+21 | def chain_fallbacks(
+   |     ^^^^^^^^^^^^^^^
+22 |     fallback_functions: Sequence[Callable[P, Awaitable[R]]],
+   |     ------------------------------------------------------- Parameter declared here
+23 |     handled_exceptions: tuple[type[Exception], ...],
+24 | ) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-return-type]: Return type does not match returned value
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/test_shared_decorators.py:174:34
+    |
+172 | async def test_validate_output_rejects_invalid_result() -> None:
+173 |     @validate_output()
+174 |     async def build_payload() -> list[int]:
+    |                                  --------- Expected `list[int]` because of return type
+175 |         await asyncio.sleep(0)
+176 |         return ["bad"]
+    |                ^^^^^^^ expected `list[int]`, found `list[int | str]`
+177 |
+178 |     with pytest.raises(ValueError, match="Output validation failed"):
+    |
+info: rule `invalid-return-type` is enabled by default
+
+error[unresolved-attribute]: Module `bot.handlers.channels` has no member `_find_matching_monitor`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_channels_handler.py:13:14
+   |
+11 |     ]
+12 |
+13 |     result = channels_handler._find_matching_monitor(monitors, 1001, "Asyncio tips and tricks")
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+14 |
+15 |     assert result == monitors[0]
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `bot.handlers.channels` has no member `_find_matching_monitor`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_channels_handler.py:23:14
+   |
+21 |     ]
+22 |
+23 |     result = channels_handler._find_matching_monitor(monitors, 2002, "Asyncio tips and tricks")
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+24 |
+25 |     assert result is None
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `bot.handlers.channels` has no member `_find_matching_monitor`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_channels_handler.py:31:14
+   |
+29 |     monitors = [PersistedMonitor(chat_id=1001, title="Python", keywords=[], owner_user_id=1)]
+30 |
+31 |     result = channels_handler._find_matching_monitor(monitors, 1001, "Anything at all")
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+32 |
+33 |     assert result == monitors[0]
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Module `bot.handlers.channels` has no member `_find_matching_monitor`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_channels_handler.py:46:14
+   |
+44 |     )
+45 |
+46 |     result = channels_handler._find_matching_monitor([monitor], -100123, "Supplements update")
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+47 |
+48 |     assert result == monitor
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[missing-argument]: No arguments provided for required parameters `text`, `monitor`, `chat_title` of function `_build_notification`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_channels_handler.py:59:14
+   |
+57 |     )
+58 |
+59 |     result = channels_handler._build_notification("Useful asyncio update", monitor, "Python News")
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+60 |
+61 |     assert "📢 **Python News**" in result
+   |
+info: Parameters declared here
+  --> bot/handlers/channels.py:12:24
+   |
+12 | def _build_notification(*, text: str, monitor: PersistedMonitor, chat_title: str) -> str:
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+13 |     """Build a short notification message for a matched channel post."""
+14 |     preview = text[:300] + ("..." if len(text) > CHANNEL_MAX_LENGTH_MESSAGE else "")
+   |
+info: rule `missing-argument` is enabled by default
+
+error[too-many-positional-arguments]: Too many positional arguments to function `_build_notification`: expected 0, got 3
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_channels_handler.py:59:51
+   |
+57 |     )
+58 |
+59 |     result = channels_handler._build_notification("Useful asyncio update", monitor, "Python News")
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^
+60 |
+61 |     assert "📢 **Python News**" in result
+   |
+info: Function signature here
+  --> bot/handlers/channels.py:12:5
+   |
+12 | def _build_notification(*, text: str, monitor: PersistedMonitor, chat_title: str) -> str:
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+13 |     """Build a short notification message for a matched channel post."""
+14 |     preview = text[:300] + ("..." if len(text) > CHANNEL_MAX_LENGTH_MESSAGE else "")
+   |
+info: rule `too-many-positional-arguments` is enabled by default
+
+error[missing-argument]: No arguments provided for required parameters `text`, `monitor`, `chat_title` of function `_build_notification`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_channels_handler.py:70:14
+   |
+68 |     text = "a" * 350
+69 |
+70 |     result = channels_handler._build_notification(text, monitor, "Python News")
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+71 |
+72 |     assert "a" * 300 in result
+   |
+info: Parameters declared here
+  --> bot/handlers/channels.py:12:24
+   |
+12 | def _build_notification(*, text: str, monitor: PersistedMonitor, chat_title: str) -> str:
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+13 |     """Build a short notification message for a matched channel post."""
+14 |     preview = text[:300] + ("..." if len(text) > CHANNEL_MAX_LENGTH_MESSAGE else "")
+   |
+info: rule `missing-argument` is enabled by default
+
+error[too-many-positional-arguments]: Too many positional arguments to function `_build_notification`: expected 0, got 3
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_channels_handler.py:70:51
+   |
+68 |     text = "a" * 350
+69 |
+70 |     result = channels_handler._build_notification(text, monitor, "Python News")
+   |                                                   ^^^^
+71 |
+72 |     assert "a" * 300 in result
+   |
+info: Function signature here
+  --> bot/handlers/channels.py:12:5
+   |
+12 | def _build_notification(*, text: str, monitor: PersistedMonitor, chat_title: str) -> str:
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+13 |     """Build a short notification message for a matched channel post."""
+14 |     preview = text[:300] + ("..." if len(text) > CHANNEL_MAX_LENGTH_MESSAGE else "")
+   |
+info: rule `too-many-positional-arguments` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:149:44
+    |
+147 |     monitor_service: FakeMonitorService,
+148 | ) -> None:
+149 |     router = setup_commands(conversations, monitor_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+150 |     handler = _get_handler(router, "cmd_start")
+151 |     message = FakeMessage("/start")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:168:44
+    |
+166 |     monitor_service: FakeMonitorService,
+167 | ) -> None:
+168 |     router = setup_commands(conversations, monitor_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+169 |     handler = _get_handler(router, "cmd_agent_switch")
+170 |     message = FakeMessage("/explanatory")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:183:44
+    |
+181 |     monitor_service: FakeMonitorService,
+182 | ) -> None:
+183 |     router = setup_commands(conversations, monitor_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+184 |     handler = _get_handler(router, "cmd_agent_switch")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:197:44
+    |
+195 |     monitor_service: FakeMonitorService,
+196 | ) -> None:
+197 |     router = setup_commands(conversations, monitor_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+198 |     handler = _get_handler(router, "cmd_agent")
+199 |     message = FakeMessage("/agent")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:219:44
+    |
+217 |     monitor_service: FakeMonitorService,
+218 | ) -> None:
+219 |     router = setup_commands(conversations, monitor_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+220 |     handler = _get_handler(router, "cmd_agent")
+221 |     message = FakeMessage("/agent researcher")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:234:44
+    |
+232 |     monitor_service: FakeMonitorService,
+233 | ) -> None:
+234 |     router = setup_commands(conversations, monitor_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+235 |     handler = _get_handler(router, "cmd_agent")
+236 |     message = FakeMessage("/agent unknown_mode")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:253:44
+    |
+251 | ) -> None:
+252 |     conversations.set_active_agent(1, "researcher")
+253 |     router = setup_commands(conversations, monitor_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+254 |     handler = _get_handler(router, "cmd_clear")
+255 |     message = FakeMessage("/clear")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:271:44
+    |
+269 |         FakeMonitor(chat_id=-10055, title="Private Channel", keywords=["gym"])
+270 |     )
+271 |     router = setup_commands(conversations, monitor_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+272 |     handler = _get_handler(router, "cmd_monitor")
+273 |     message = FakeMessage("/monitor")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:289:44
+    |
+287 |     monitor_service: FakeMonitorService,
+288 | ) -> None:
+289 |     router = setup_commands(conversations, monitor_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+290 |     handler = _get_handler(router, "cmd_monitor")
+291 |     message = FakeMessage("/monitor add")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:304:44
+    |
+302 |     monitor_service: FakeMonitorService,
+303 | ) -> None:
+304 |     router = setup_commands(conversations, monitor_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+305 |     handler = _get_handler(router, "cmd_monitor")
+306 |     message = FakeMessage("/monitor add @publicchan ai, ml")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:321:44
+    |
+319 | ) -> None:
+320 |     monitor_service.begin_pending_add(1, ["gym"])
+321 |     router = setup_commands(conversations, monitor_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+322 |     handler = _get_handler(router, "cmd_monitor_forward")
+323 |     message = FakeMessage(
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:345:44
+    |
+343 |         FakeMonitor(chat_id=-10055, title="Private Channel", keywords=["gym"])
+344 |     )
+345 |     router = setup_commands(conversations, monitor_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+346 |     handler = _get_handler(router, "cmd_monitor")
+347 |     message = FakeMessage("/monitor remove -10055")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:369:44
+    |
+367 |         vault_path="/tmp/vault",
+368 |     )
+369 |     router = setup_commands(conversations, monitor_service, health=health)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+370 |     handler = _get_handler(router, "cmd_status")
+371 |     message = FakeMessage("/status")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:388:44
+    |
+386 | ) -> None:
+387 |     conversations.set_model(1, "anthropic/test-model")
+388 |     router = setup_commands(conversations, monitor_service, deep_research=deep_research_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+389 |     handler = _get_handler(router, "cmd_deep")
+390 |     message = FakeMessage("/deep compare magnesium glycinate vs citrate for sleep")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:388:61
+    |
+386 | ) -> None:
+387 |     conversations.set_model(1, "anthropic/test-model")
+388 |     router = setup_commands(conversations, monitor_service, deep_research=deep_research_service)
+    |                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected `DeepResearchService | None`, found `FakeDeepResearchService`
+389 |     handler = _get_handler(router, "cmd_deep")
+390 |     message = FakeMessage("/deep compare magnesium glycinate vs citrate for sleep")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+183 |     deep_research: "DeepResearchService | None" = None,
+    |     -------------------------------------------------- Parameter declared here
+184 |     health: "HealthService | None" = None,
+185 | ) -> Router:
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:406:44
+    |
+404 |     deep_research_service: FakeDeepResearchService,
+405 | ) -> None:
+406 |     router = setup_commands(conversations, monitor_service, deep_research=deep_research_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+407 |     handler = _get_handler(router, "cmd_deep")
+408 |     message = FakeMessage("/deep")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:406:61
+    |
+404 |     deep_research_service: FakeDeepResearchService,
+405 | ) -> None:
+406 |     router = setup_commands(conversations, monitor_service, deep_research=deep_research_service)
+    |                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected `DeepResearchService | None`, found `FakeDeepResearchService`
+407 |     handler = _get_handler(router, "cmd_deep")
+408 |     message = FakeMessage("/deep")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+183 |     deep_research: "DeepResearchService | None" = None,
+    |     -------------------------------------------------- Parameter declared here
+184 |     health: "HealthService | None" = None,
+185 | ) -> Router:
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:423:44
+    |
+421 | ) -> None:
+422 |     deep_research_service.error = LLMError("rate limited")
+423 |     router = setup_commands(conversations, monitor_service, deep_research=deep_research_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+424 |     handler = _get_handler(router, "cmd_deep")
+425 |     message = FakeMessage("/deep analyze recent AI benchmarks")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:423:61
+    |
+421 | ) -> None:
+422 |     deep_research_service.error = LLMError("rate limited")
+423 |     router = setup_commands(conversations, monitor_service, deep_research=deep_research_service)
+    |                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected `DeepResearchService | None`, found `FakeDeepResearchService`
+424 |     handler = _get_handler(router, "cmd_deep")
+425 |     message = FakeMessage("/deep analyze recent AI benchmarks")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+183 |     deep_research: "DeepResearchService | None" = None,
+    |     -------------------------------------------------- Parameter declared here
+184 |     health: "HealthService | None" = None,
+185 | ) -> Router:
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to function `setup_commands` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_commands.py:437:44
+    |
+435 |     monitor_service: FakeMonitorService,
+436 | ) -> None:
+437 |     router = setup_commands(conversations, monitor_service)
+    |                                            ^^^^^^^^^^^^^^^ Expected `MonitorService`, found `FakeMonitorService`
+438 |     handler = _get_handler(router, "cmd_unknown")
+439 |     message = FakeMessage("/unknownagent")
+    |
+info: Function defined here
+   --> bot/handlers/commands.py:180:5
+    |
+180 | def setup_commands(  # noqa: PLR0915
+    |     ^^^^^^^^^^^^^^
+181 |     conversations: ConversationManager,
+182 |     monitor_service: MonitorService,
+    |     ------------------------------- Parameter declared here
+183 |     deep_research: "DeepResearchService | None" = None,
+184 |     health: "HealthService | None" = None,
+    |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_conversation.py:16:32
+   |
+14 |         "max_history": 50,
+15 |     }
+16 |     return ConversationManager(**{**defaults, **kwargs})
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^ Expected `str`, found `str | int | Unknown`
+   |
+info: Element `int` of this union is not assignable to `str`
+info: Method defined here
+  --> bot/services/conversation.py:14:9
+   |
+12 |     """Manages per-user conversation sessions with timeout-based cleanup."""
+13 |
+14 |     def __init__(
+   |         ^^^^^^^^
+15 |         self,
+16 |         default_model: str,
+   |         ------------------ Parameter declared here
+17 |         *,
+18 |         session_timeout_minutes: int = SESSION_TIMEOUT_MINUTES,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_conversation.py:16:32
+   |
+14 |         "max_history": 50,
+15 |     }
+16 |     return ConversationManager(**{**defaults, **kwargs})
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^ Expected `int`, found `str | int | Unknown`
+   |
+info: Element `str` of this union is not assignable to `int`
+info: Method defined here
+  --> bot/services/conversation.py:14:9
+   |
+12 |     """Manages per-user conversation sessions with timeout-based cleanup."""
+13 |
+14 |     def __init__(
+   |         ^^^^^^^^
+15 |         self,
+16 |         default_model: str,
+17 |         *,
+18 |         session_timeout_minutes: int = SESSION_TIMEOUT_MINUTES,
+   |         ------------------------------------------------------ Parameter declared here
+19 |         max_history: int = MAX_HISTORY,
+20 |     ) -> None:
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_conversation.py:16:32
+   |
+14 |         "max_history": 50,
+15 |     }
+16 |     return ConversationManager(**{**defaults, **kwargs})
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^ Expected `int`, found `str | int | Unknown`
+   |
+info: Element `str` of this union is not assignable to `int`
+info: Method defined here
+  --> bot/services/conversation.py:14:9
+   |
+12 |     """Manages per-user conversation sessions with timeout-based cleanup."""
+13 |
+14 |     def __init__(
+   |         ^^^^^^^^
+15 |         self,
+16 |         default_model: str,
+17 |         *,
+18 |         session_timeout_minutes: int = SESSION_TIMEOUT_MINUTES,
+19 |         max_history: int = MAX_HISTORY,
+   |         ------------------------------ Parameter declared here
+20 |     ) -> None:
+21 |         self._sessions: dict[int, Conversation] = {}
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_deep_research.py:50:35
+   |
+48 |         ]
+49 |     )
+50 |     service = DeepResearchService(llm=llm)
+   |                                   ^^^^^^^ Expected `LLMService`, found `FakeLLMService`
+51 |     progress: list[str] = []
+   |
+info: Method defined here
+  --> bot/services/deep_research.py:29:9
+   |
+27 |     """Runs an auto research-style multi-cycle research loop."""
+28 |
+29 |     def __init__(self, llm: LLMService) -> None:
+   |         ^^^^^^^^       --------------- Parameter declared here
+30 |         self._llm = llm
+31 |         self._researcher = get_agent("researcher") or get_default_agent()
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_deep_research.py:79:35
+   |
+77 |         ]
+78 |     )
+79 |     service = DeepResearchService(llm=llm)
+   |                                   ^^^^^^^ Expected `LLMService`, found `FakeLLMService`
+80 |     progress: list[str] = []
+   |
+info: Method defined here
+  --> bot/services/deep_research.py:29:9
+   |
+27 |     """Runs an auto research-style multi-cycle research loop."""
+28 |
+29 |     def __init__(self, llm: LLMService) -> None:
+   |         ^^^^^^^^       --------------- Parameter declared here
+30 |         self._llm = llm
+31 |         self._researcher = get_agent("researcher") or get_default_agent()
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_deep_research.py:103:35
+    |
+101 |         ]
+102 |     )
+103 |     service = DeepResearchService(llm=llm)
+    |                                   ^^^^^^^ Expected `LLMService`, found `FakeLLMService`
+104 |
+105 |     await service.run(query="AI safety updates", model="test-model")
+    |
+info: Method defined here
+  --> bot/services/deep_research.py:29:9
+   |
+27 |     """Runs an auto research-style multi-cycle research loop."""
+28 |
+29 |     def __init__(self, llm: LLMService) -> None:
+   |         ^^^^^^^^       --------------- Parameter declared here
+30 |         self._llm = llm
+31 |         self._researcher = get_agent("researcher") or get_default_agent()
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-assignment]: Object of type `MagicMock` is not assignable to attribute `stream_completion` of type `def stream_completion(self, messages: list[dict[Unknown, Unknown]], model: str, *, tools: list[dict[Unknown, Unknown]] | None = None, temperature: int | float = ..., max_tokens: int = ...) -> AsyncIterator[StreamDelta]`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_llm.py:83:5
+   |
+81 |     mock_client: OpenRouterClient,
+82 | ) -> None:
+83 |     mock_client.stream_completion = MagicMock(
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+84 |         return_value=_async_iter([
+85 |             StreamDelta(text="Hello "),
+   |
+info: Implicit shadowing of function `stream_completion`, add an annotation to make it explicit if this is intentional
+info: rule `invalid-assignment` is enabled by default
+
+error[unresolved-attribute]: Object of type `bound method OpenRouterClient.stream_completion(messages: list[dict[Unknown, Unknown]], model: str, *, tools: list[dict[Unknown, Unknown]] | None = None, temperature: int | float = ..., max_tokens: int = ...) -> AsyncIterator[StreamDelta]` has no attribute `call_args`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_llm.py:93:17
+   |
+92 |     assert chunks == ["Hello ", "world!"]
+93 |     _, kwargs = mock_client.stream_completion.call_args
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+94 |     tool_names = {tool["function"]["name"] for tool in kwargs["tools"]}
+95 |     assert kwargs["temperature"] == get_default_agent().temperature
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[invalid-assignment]: Object of type `MagicMock` is not assignable to attribute `stream_completion` of type `def stream_completion(self, messages: list[dict[Unknown, Unknown]], model: str, *, tools: list[dict[Unknown, Unknown]] | None = None, temperature: int | float = ..., max_tokens: int = ...) -> AsyncIterator[StreamDelta]`
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_llm.py:108:5
+    |
+106 | ) -> None:
+107 |     conversations.set_active_agent(1, "math_tutor")
+108 |     mock_client.stream_completion = MagicMock(
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+109 |         return_value=_async_iter([StreamDelta(text="step-by-step")])
+110 |     )
+    |
+info: Implicit shadowing of function `stream_completion`, add an annotation to make it explicit if this is intentional
+info: rule `invalid-assignment` is enabled by default
+
+error[unresolved-attribute]: Object of type `bound method OpenRouterClient.stream_completion(messages: list[dict[Unknown, Unknown]], model: str, *, tools: list[dict[Unknown, Unknown]] | None = None, temperature: int | float = ..., max_tokens: int = ...) -> AsyncIterator[StreamDelta]` has no attribute `call_args`
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_llm.py:115:17
+    |
+114 |     assert chunks == ["step-by-step"]
+115 |     _, kwargs = mock_client.stream_completion.call_args
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+116 |     math_tutor = get_agent("math_tutor")
+117 |     assert math_tutor is not None
+    |
+info: rule `unresolved-attribute` is enabled by default
+
+error[invalid-assignment]: Object of type `MagicMock` is not assignable to attribute `stream_completion` of type `def stream_completion(self, messages: list[dict[Unknown, Unknown]], model: str, *, tools: list[dict[Unknown, Unknown]] | None = None, temperature: int | float = ..., max_tokens: int = ...) -> AsyncIterator[StreamDelta]`
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_llm.py:131:5
+    |
+129 | ) -> None:
+130 |     conversations.set_active_agent(1, "missing")
+131 |     mock_client.stream_completion = MagicMock(
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+132 |         return_value=_async_iter([StreamDelta(text="fallback")])
+133 |     )
+    |
+info: Implicit shadowing of function `stream_completion`, add an annotation to make it explicit if this is intentional
+info: rule `invalid-assignment` is enabled by default
+
+error[unresolved-attribute]: Object of type `bound method OpenRouterClient.stream_completion(messages: list[dict[Unknown, Unknown]], model: str, *, tools: list[dict[Unknown, Unknown]] | None = None, temperature: int | float = ..., max_tokens: int = ...) -> AsyncIterator[StreamDelta]` has no attribute `call_args`
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_llm.py:138:17
+    |
+137 |     assert chunks == ["fallback"]
+138 |     _, kwargs = mock_client.stream_completion.call_args
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+139 |     assert kwargs["temperature"] == get_default_agent().temperature
+140 |     assert kwargs["max_tokens"] == get_default_agent().max_tokens
+    |
+info: rule `unresolved-attribute` is enabled by default
+
+error[invalid-assignment]: Object of type `MagicMock` is not assignable to attribute `stream_completion` of type `def stream_completion(self, messages: list[dict[Unknown, Unknown]], model: str, *, tools: list[dict[Unknown, Unknown]] | None = None, temperature: int | float = ..., max_tokens: int = ...) -> AsyncIterator[StreamDelta]`
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_llm.py:169:5
+    |
+167 |         return _async_iter([StreamDelta(text="Got: found: test")])
+168 |
+169 |     mock_client.stream_completion = MagicMock(side_effect=make_stream)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+170 |
+171 |     chunks = [chunk async for chunk in llm_service.stream_response(1, "find test")]
+    |
+info: Implicit shadowing of function `stream_completion`, add an annotation to make it explicit if this is intentional
+info: rule `invalid-assignment` is enabled by default
+
+error[invalid-assignment]: Object of type `MagicMock` is not assignable to attribute `stream_completion` of type `def stream_completion(self, messages: list[dict[Unknown, Unknown]], model: str, *, tools: list[dict[Unknown, Unknown]] | None = None, temperature: int | float = ..., max_tokens: int = ...) -> AsyncIterator[StreamDelta]`
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_llm.py:209:5
+    |
+207 |         return _async_iter([StreamDelta(text="done")])
+208 |
+209 |     mock_client.stream_completion = MagicMock(side_effect=make_stream)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+210 |
+211 |     chunks = [chunk async for chunk in llm_service.stream_response(1, "do async")]
+    |
+info: Implicit shadowing of function `stream_completion`, add an annotation to make it explicit if this is intentional
+info: rule `invalid-assignment` is enabled by default
+
+error[invalid-assignment]: Object of type `MagicMock` is not assignable to attribute `stream_completion` of type `def stream_completion(self, messages: list[dict[Unknown, Unknown]], model: str, *, tools: list[dict[Unknown, Unknown]] | None = None, temperature: int | float = ..., max_tokens: int = ...) -> AsyncIterator[StreamDelta]`
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_llm.py:242:5
+    |
+240 |         return _async_iter([StreamDelta(text="handled")])
+241 |
+242 |     mock_client.stream_completion = MagicMock(side_effect=make_stream)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+243 |
+244 |     chunks = [chunk async for chunk in llm_service.stream_response(1, "bad call")]
+    |
+info: Implicit shadowing of function `stream_completion`, add an annotation to make it explicit if this is intentional
+info: rule `invalid-assignment` is enabled by default
+
+error[invalid-assignment]: Object of type `MagicMock` is not assignable to attribute `stream_completion` of type `def stream_completion(self, messages: list[dict[Unknown, Unknown]], model: str, *, tools: list[dict[Unknown, Unknown]] | None = None, temperature: int | float = ..., max_tokens: int = ...) -> AsyncIterator[StreamDelta]`
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_llm.py:279:5
+    |
+277 |         return _async_iter([StreamDelta(text="handled")])
+278 |
+279 |     mock_client.stream_completion = MagicMock(side_effect=make_stream)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+280 |
+281 |     chunks = [chunk async for chunk in llm_service.stream_response(1, "use tool")]
+    |
+info: Implicit shadowing of function `stream_completion`, add an annotation to make it explicit if this is intentional
+info: rule `invalid-assignment` is enabled by default
+
+error[invalid-assignment]: Object of type `MagicMock` is not assignable to attribute `stream_completion` of type `def stream_completion(self, messages: list[dict[Unknown, Unknown]], model: str, *, tools: list[dict[Unknown, Unknown]] | None = None, temperature: int | float = ..., max_tokens: int = ...) -> AsyncIterator[StreamDelta]`
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_llm.py:315:5
+    |
+313 |         return _async_iter([StreamDelta(text="Side result")])
+314 |
+315 |     mock_client.stream_completion = MagicMock(side_effect=make_stream)
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+316 |
+317 |     result = await llm_service.complete_side_context(
+    |
+info: Implicit shadowing of function `stream_completion`, add an annotation to make it explicit if this is intentional
+info: rule `invalid-assignment` is enabled by default
+
+error[invalid-return-type]: Return type does not match returned value
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_memory.py:11:30
+   |
+10 | @pytest.fixture
+11 | async def store(tmp_path) -> MemoryStore:
+   |                              ^^^^^^^^^^^ expected `MemoryStore`, found `types.AsyncGeneratorType`
+12 |     db_path = str(tmp_path / "memory.db")
+13 |     s = MemoryStore(db_path)
+   |
+info: Function is inferred as returning `types.AsyncGeneratorType` because it is an async generator function
+info: See https://docs.python.org/3/glossary.html#term-asynchronous-generator for more details
+info: rule `invalid-return-type` is enabled by default
+
+error[invalid-assignment]: Property `content` defined in `Message` is read-only
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_models.py:24:13
+   |
+22 |         msg = Message(role=Role.USER, content="hello")
+23 |         try:
+24 |             msg.content = "changed"
+   |             ^^^^^^^^^^^
+25 |             raise AssertionError("Should be frozen")
+26 |         except AttributeError:
+   |
+info: rule `invalid-assignment` is enabled by default
+
+error[invalid-return-type]: Return type does not match returned value
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_monitors.py:12:30
+   |
+11 | @pytest.fixture
+12 | async def store(tmp_path) -> MonitorStore:
+   |                              ^^^^^^^^^^^^ expected `MonitorStore`, found `types.AsyncGeneratorType`
+13 |     monitor_store = MonitorStore(str(tmp_path / "monitors.db"))
+14 |     await monitor_store.init()
+   |
+info: Function is inferred as returning `types.AsyncGeneratorType` because it is an async generator function
+info: See https://docs.python.org/3/glossary.html#term-asynchronous-generator for more details
+info: rule `invalid-return-type` is enabled by default
+
+error[unresolved-attribute]: Object of type `OpenRouterClient` has no attribute `_parse_sse`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_openrouter.py:54:28
+   |
+53 |         deltas: list[StreamDelta] = []
+54 |         async for delta in client._parse_sse(mock_response):
+   |                            ^^^^^^^^^^^^^^^^^
+55 |             deltas.append(delta)
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Object of type `OpenRouterClient` has no attribute `_parse_sse`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_openrouter.py:76:28
+   |
+75 |         deltas: list[StreamDelta] = []
+76 |         async for delta in client._parse_sse(mock_response):
+   |                            ^^^^^^^^^^^^^^^^^
+77 |             deltas.append(delta)
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[unresolved-attribute]: Object of type `OpenRouterClient` has no attribute `_parse_sse`
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_openrouter.py:94:36
+   |
+92 |         mock_response.aiter_lines = MagicMock(return_value=_async_iter(lines))
+93 |
+94 |         deltas = [d async for d in client._parse_sse(mock_response)]
+   |                                    ^^^^^^^^^^^^^^^^^
+95 |         assert deltas == []
+   |
+info: rule `unresolved-attribute` is enabled by default
+
+error[missing-argument]: No argument provided for required parameter 1
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_scheduler.py:117:24
+    |
+115 |         executor = build_remove_schedule_executor(scheduler)
+116 |
+117 |         result = await executor(name="del-me")
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^
+118 |         assert "Deleted" in result
+    |
+info: rule `missing-argument` is enabled by default
+
+error[unknown-argument]: Argument `name` does not match any known parameter
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_scheduler.py:117:33
+    |
+115 |         executor = build_remove_schedule_executor(scheduler)
+116 |
+117 |         result = await executor(name="del-me")
+    |                                 ^^^^^^^^^^^^^
+118 |         assert "Deleted" in result
+    |
+info: rule `unknown-argument` is enabled by default
+
+error[missing-argument]: No argument provided for required parameter 1
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_scheduler.py:120:24
+    |
+118 |         assert "Deleted" in result
+119 |
+120 |         result = await executor(name="del-me")
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^
+121 |         assert "not found" in result
+    |
+info: rule `missing-argument` is enabled by default
+
+error[unknown-argument]: Argument `name` does not match any known parameter
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_scheduler.py:120:33
+    |
+118 |         assert "Deleted" in result
+119 |
+120 |         result = await executor(name="del-me")
+    |                                 ^^^^^^^^^^^^^
+121 |         assert "not found" in result
+    |
+info: rule `unknown-argument` is enabled by default
+
+error[invalid-return-type]: Return type does not match returned value
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_tools.py:65:49
+   |
+64 |     @pytest.fixture
+65 |     def executors(self, vault: VaultService) -> dict[str, object]:
+   |                                                 ----------------- Expected `dict[str, object]` because of return type
+66 |         return build_vault_async_tools(vault)
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `dict[str, object]`, found `dict[str, (...) -> Awaitable[str]]`
+67 |
+68 |     async def test_search_vault(self, executors):
+   |
+info: rule `invalid-return-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_web_search_router.py:41:9
+   |
+39 | def router() -> WebSearchRouter:
+40 |     return WebSearchRouter(
+41 |         tavily=FakeTavily(),
+   |         ^^^^^^^^^^^^^^^^^^^ Expected `TavilySearchClient | None`, found `FakeTavily`
+42 |         github=FakeGitHub(),
+43 |         huggingface=FakeHuggingFace(),
+   |
+info: Method defined here
+  --> bot/services/web_search_router.py:31:9
+   |
+29 |     """Routes search queries to the best source based on keywords or explicit source."""
+30 |
+31 |     def __init__(
+   |         ^^^^^^^^
+32 |         self,
+33 |         *,
+34 |         tavily: TavilySearchClient | None = None,
+   |         ---------------------------------------- Parameter declared here
+35 |         github: GitHubSearchClient | None = None,
+36 |         huggingface: HuggingFaceSearchClient | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_web_search_router.py:42:9
+   |
+40 |     return WebSearchRouter(
+41 |         tavily=FakeTavily(),
+42 |         github=FakeGitHub(),
+   |         ^^^^^^^^^^^^^^^^^^^ Expected `GitHubSearchClient | None`, found `FakeGitHub`
+43 |         huggingface=FakeHuggingFace(),
+44 |         stackoverflow=FakeStackOverflow(),
+   |
+info: Method defined here
+  --> bot/services/web_search_router.py:31:9
+   |
+29 |     """Routes search queries to the best source based on keywords or explicit source."""
+30 |
+31 |     def __init__(
+   |         ^^^^^^^^
+32 |         self,
+33 |         *,
+34 |         tavily: TavilySearchClient | None = None,
+35 |         github: GitHubSearchClient | None = None,
+   |         ---------------------------------------- Parameter declared here
+36 |         huggingface: HuggingFaceSearchClient | None = None,
+37 |         stackoverflow: StackOverflowSearchClient | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_web_search_router.py:43:9
+   |
+41 |         tavily=FakeTavily(),
+42 |         github=FakeGitHub(),
+43 |         huggingface=FakeHuggingFace(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected `HuggingFaceSearchClient | None`, found `FakeHuggingFace`
+44 |         stackoverflow=FakeStackOverflow(),
+45 |         arxiv=FakeArxiv(),
+   |
+info: Method defined here
+  --> bot/services/web_search_router.py:31:9
+   |
+29 |     """Routes search queries to the best source based on keywords or explicit source."""
+30 |
+31 |     def __init__(
+   |         ^^^^^^^^
+32 |         self,
+33 |         *,
+34 |         tavily: TavilySearchClient | None = None,
+35 |         github: GitHubSearchClient | None = None,
+36 |         huggingface: HuggingFaceSearchClient | None = None,
+   |         -------------------------------------------------- Parameter declared here
+37 |         stackoverflow: StackOverflowSearchClient | None = None,
+38 |         arxiv: ArxivSearchClient | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_web_search_router.py:44:9
+   |
+42 |         github=FakeGitHub(),
+43 |         huggingface=FakeHuggingFace(),
+44 |         stackoverflow=FakeStackOverflow(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Expected `StackOverflowSearchClient | None`, found `FakeStackOverflow`
+45 |         arxiv=FakeArxiv(),
+46 |         wikipedia=FakeWikipedia(),
+   |
+info: Method defined here
+  --> bot/services/web_search_router.py:31:9
+   |
+29 |     """Routes search queries to the best source based on keywords or explicit source."""
+30 |
+31 |     def __init__(
+   |         ^^^^^^^^
+32 |         self,
+33 |         *,
+   |
+  ::: bot/services/web_search_router.py:37:9
+   |
+35 |         github: GitHubSearchClient | None = None,
+36 |         huggingface: HuggingFaceSearchClient | None = None,
+37 |         stackoverflow: StackOverflowSearchClient | None = None,
+   |         ------------------------------------------------------ Parameter declared here
+38 |         arxiv: ArxivSearchClient | None = None,
+39 |         wikipedia: WikipediaSearchClient | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_web_search_router.py:45:9
+   |
+43 |         huggingface=FakeHuggingFace(),
+44 |         stackoverflow=FakeStackOverflow(),
+45 |         arxiv=FakeArxiv(),
+   |         ^^^^^^^^^^^^^^^^^ Expected `ArxivSearchClient | None`, found `FakeArxiv`
+46 |         wikipedia=FakeWikipedia(),
+47 |     )
+   |
+info: Method defined here
+  --> bot/services/web_search_router.py:31:9
+   |
+29 |     """Routes search queries to the best source based on keywords or explicit source."""
+30 |
+31 |     def __init__(
+   |         ^^^^^^^^
+32 |         self,
+33 |         *,
+   |
+  ::: bot/services/web_search_router.py:38:9
+   |
+36 |         huggingface: HuggingFaceSearchClient | None = None,
+37 |         stackoverflow: StackOverflowSearchClient | None = None,
+38 |         arxiv: ArxivSearchClient | None = None,
+   |         -------------------------------------- Parameter declared here
+39 |         wikipedia: WikipediaSearchClient | None = None,
+40 |         reddit: RedditSearchClient | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+  --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_web_search_router.py:46:9
+   |
+44 |         stackoverflow=FakeStackOverflow(),
+45 |         arxiv=FakeArxiv(),
+46 |         wikipedia=FakeWikipedia(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ Expected `WikipediaSearchClient | None`, found `FakeWikipedia`
+47 |     )
+   |
+info: Method defined here
+  --> bot/services/web_search_router.py:31:9
+   |
+29 |     """Routes search queries to the best source based on keywords or explicit source."""
+30 |
+31 |     def __init__(
+   |         ^^^^^^^^
+32 |         self,
+33 |         *,
+   |
+  ::: bot/services/web_search_router.py:39:9
+   |
+37 |         stackoverflow: StackOverflowSearchClient | None = None,
+38 |         arxiv: ArxivSearchClient | None = None,
+39 |         wikipedia: WikipediaSearchClient | None = None,
+   |         ---------------------------------------------- Parameter declared here
+40 |         reddit: RedditSearchClient | None = None,
+41 |     ) -> None:
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_web_search_router.py:132:47
+    |
+130 |     @pytest.mark.asyncio
+131 |     async def test_missing_tavily_returns_message(self):
+132 |         router = WebSearchRouter(tavily=None, github=FakeGitHub())
+    |                                               ^^^^^^^^^^^^^^^^^^^ Expected `GitHubSearchClient | None`, found `FakeGitHub`
+133 |         result = await router.search("test query", source="web")
+134 |         assert "not configured" in result
+    |
+info: Method defined here
+  --> bot/services/web_search_router.py:31:9
+   |
+29 |     """Routes search queries to the best source based on keywords or explicit source."""
+30 |
+31 |     def __init__(
+   |         ^^^^^^^^
+32 |         self,
+33 |         *,
+34 |         tavily: TavilySearchClient | None = None,
+35 |         github: GitHubSearchClient | None = None,
+   |         ---------------------------------------- Parameter declared here
+36 |         huggingface: HuggingFaceSearchClient | None = None,
+37 |         stackoverflow: StackOverflowSearchClient | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_web_search_router.py:138:34
+    |
+136 |     @pytest.mark.asyncio
+137 |     async def test_missing_github_returns_message(self):
+138 |         router = WebSearchRouter(tavily=FakeTavily(), github=None)
+    |                                  ^^^^^^^^^^^^^^^^^^^ Expected `TavilySearchClient | None`, found `FakeTavily`
+139 |         result = await router.search("test", source="github")
+140 |         assert "not available" in result
+    |
+info: Method defined here
+  --> bot/services/web_search_router.py:31:9
+   |
+29 |     """Routes search queries to the best source based on keywords or explicit source."""
+30 |
+31 |     def __init__(
+   |         ^^^^^^^^
+32 |         self,
+33 |         *,
+34 |         tavily: TavilySearchClient | None = None,
+   |         ---------------------------------------- Parameter declared here
+35 |         github: GitHubSearchClient | None = None,
+36 |         huggingface: HuggingFaceSearchClient | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_web_search_router.py:144:34
+    |
+142 |     @pytest.mark.asyncio
+143 |     async def test_missing_huggingface_returns_message(self):
+144 |         router = WebSearchRouter(tavily=FakeTavily(), huggingface=None)
+    |                                  ^^^^^^^^^^^^^^^^^^^ Expected `TavilySearchClient | None`, found `FakeTavily`
+145 |         result = await router.search("llama", source="huggingface")
+146 |         assert "not available" in result
+    |
+info: Method defined here
+  --> bot/services/web_search_router.py:31:9
+   |
+29 |     """Routes search queries to the best source based on keywords or explicit source."""
+30 |
+31 |     def __init__(
+   |         ^^^^^^^^
+32 |         self,
+33 |         *,
+34 |         tavily: TavilySearchClient | None = None,
+   |         ---------------------------------------- Parameter declared here
+35 |         github: GitHubSearchClient | None = None,
+36 |         huggingface: HuggingFaceSearchClient | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_web_search_router.py:150:34
+    |
+148 |     @pytest.mark.asyncio
+149 |     async def test_missing_stackoverflow_returns_message(self):
+150 |         router = WebSearchRouter(tavily=FakeTavily(), stackoverflow=None)
+    |                                  ^^^^^^^^^^^^^^^^^^^ Expected `TavilySearchClient | None`, found `FakeTavily`
+151 |         result = await router.search("test", source="stackoverflow")
+152 |         assert "not available" in result
+    |
+info: Method defined here
+  --> bot/services/web_search_router.py:31:9
+   |
+29 |     """Routes search queries to the best source based on keywords or explicit source."""
+30 |
+31 |     def __init__(
+   |         ^^^^^^^^
+32 |         self,
+33 |         *,
+34 |         tavily: TavilySearchClient | None = None,
+   |         ---------------------------------------- Parameter declared here
+35 |         github: GitHubSearchClient | None = None,
+36 |         huggingface: HuggingFaceSearchClient | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_web_search_router.py:156:34
+    |
+154 |     @pytest.mark.asyncio
+155 |     async def test_missing_arxiv_returns_message(self):
+156 |         router = WebSearchRouter(tavily=FakeTavily(), arxiv=None)
+    |                                  ^^^^^^^^^^^^^^^^^^^ Expected `TavilySearchClient | None`, found `FakeTavily`
+157 |         result = await router.search("test", source="arxiv")
+158 |         assert "not available" in result
+    |
+info: Method defined here
+  --> bot/services/web_search_router.py:31:9
+   |
+29 |     """Routes search queries to the best source based on keywords or explicit source."""
+30 |
+31 |     def __init__(
+   |         ^^^^^^^^
+32 |         self,
+33 |         *,
+34 |         tavily: TavilySearchClient | None = None,
+   |         ---------------------------------------- Parameter declared here
+35 |         github: GitHubSearchClient | None = None,
+36 |         huggingface: HuggingFaceSearchClient | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+error[invalid-argument-type]: Argument to bound method `__init__` is incorrect
+   --> /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT/tests/unit/test_web_search_router.py:162:34
+    |
+160 |     @pytest.mark.asyncio
+161 |     async def test_missing_wikipedia_returns_message(self):
+162 |         router = WebSearchRouter(tavily=FakeTavily(), wikipedia=None)
+    |                                  ^^^^^^^^^^^^^^^^^^^ Expected `TavilySearchClient | None`, found `FakeTavily`
+163 |         result = await router.search("test", source="wikipedia")
+164 |         assert "not available" in result
+    |
+info: Method defined here
+  --> bot/services/web_search_router.py:31:9
+   |
+29 |     """Routes search queries to the best source based on keywords or explicit source."""
+30 |
+31 |     def __init__(
+   |         ^^^^^^^^
+32 |         self,
+33 |         *,
+34 |         tavily: TavilySearchClient | None = None,
+   |         ---------------------------------------- Parameter declared here
+35 |         github: GitHubSearchClient | None = None,
+36 |         huggingface: HuggingFaceSearchClient | None = None,
+   |
+info: rule `invalid-argument-type` is enabled by default
+
+Found 80 diagnostics
+(.venv) bukachiyboss@Mac src %

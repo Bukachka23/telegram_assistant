@@ -1,6 +1,6 @@
 ---
 name: agents-md-generator
-description: Analyzes a Python (Django/FastAPI) codebase from a local path and generates a comprehensive AGENTS.md file for the pi coding agent CLI. Use this skill whenever the user wants to generate, create, or write an AGENTS.md for their project, or when they mention pi agent, pi coding agent, or want to set up project context for an AI agent. Also trigger when the user says things like "analyze my codebase", "create agent instructions", "set up pi for my project", or "generate project docs for AI".
+description: Analyzes a Python (Django/FastAPI) codebase from a local path and generates a comprehensive GEMINI.md file for the pi coding agent CLI. Use this skill whenever the user wants to generate, create, or write an GEMINI.md for their project, or when they mention pi agent, pi coding agent, or want to set up project context for an AI agent. Also trigger when the user says things like "analyze my codebase", "create agent instructions", "set up pi for my project", or "generate project docs for AI".
 ---
 
 # AGENTS.md Generator for Pi Coding Agent

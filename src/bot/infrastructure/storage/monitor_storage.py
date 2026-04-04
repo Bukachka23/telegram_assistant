@@ -14,24 +14,33 @@ logger = logging.getLogger(__name__)
 class MonitorStore:
     """SQLite-backed storage for persisted Telegram channel monitors."""
 
-    def __init__(self, db_path: str) -> None:
+    def __init__(self, db_path: str, *, db: aiosqlite.Connection | None = None) -> None:
         self._db_path = db_path
-        self._db: aiosqlite.Connection | None = None
+        self._db: aiosqlite.Connection | None = db
+        self._owns_connection: bool = db is None
+
+    def _get_db(self) -> aiosqlite.Connection:
+        """Return the active connection. Raises if init() was not called."""
+        if self._db is None:
+            msg = "MonitorStore not initialized — call init() first"
+            raise RuntimeError(msg)
+        return self._db
 
     async def init(self) -> None:
-        """Open database and ensure monitor schema exists."""
-        db_path = Path(self._db_path)
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-
-        self._db = await aiosqlite.connect(db_path)
-        self._db.row_factory = aiosqlite.Row
-        await self._db.executescript(SCHEMA)
-        await self._db.commit()
+        """Open (or reuse) a database connection and ensure the schema exists."""
+        if self._owns_connection:
+            db_path = Path(self._db_path)
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+            self._db = await aiosqlite.connect(db_path)
+            self._db.row_factory = aiosqlite.Row
+        db = self._get_db()
+        await db.executescript(SCHEMA)
+        await db.commit()
         logger.info("Monitor store ready: %s", self._db_path)
 
     async def close(self) -> None:
-        """Close the monitor database connection."""
-        if self._db:
+        """Close the connection only when this store owns it."""
+        if self._owns_connection and self._db:
             await self._db.close()
 
     async def upsert_monitor(
@@ -46,7 +55,8 @@ class MonitorStore:
     ) -> PersistedMonitor:
         """Create or update a persisted channel monitor."""
         created_at = datetime.now(UTC).isoformat()
-        async with self._db.execute(
+        db = self._get_db()
+        async with db.execute(
             """
             INSERT INTO channel_monitors (
                 owner_user_id,
@@ -75,7 +85,7 @@ class MonitorStore:
             ),
         ):
             pass
-        await self._db.commit()
+        await db.commit()
         monitor = await self.get_monitor_by_chat_id(chat_id)
         if monitor is None:
             msg = f"monitor for chat_id={chat_id} was not persisted"
@@ -84,7 +94,7 @@ class MonitorStore:
 
     async def list_monitors(self, owner_user_id: int) -> list[PersistedMonitor]:
         """Return all persisted monitors for one owner."""
-        async with self._db.execute(
+        async with self._get_db().execute(
             """
             SELECT owner_user_id, chat_id, username, title, keywords_json,
                    source_type, created_at
@@ -99,7 +109,7 @@ class MonitorStore:
 
     async def get_monitor_by_chat_id(self, chat_id: int) -> PersistedMonitor | None:
         """Return a persisted monitor by chat ID."""
-        async with self._db.execute(
+        async with self._get_db().execute(
             """
             SELECT owner_user_id, chat_id, username, title, keywords_json,
                    source_type, created_at
@@ -118,16 +128,17 @@ class MonitorStore:
         normalized_identifier = identifier.strip()
         numeric_identifier = self._parse_chat_id(normalized_identifier)
 
+        db = self._get_db()
         if numeric_identifier is not None:
-            async with self._db.execute(
+            async with db.execute(
                 "DELETE FROM channel_monitors WHERE owner_user_id = ? AND chat_id = ?",
                 (owner_user_id, numeric_identifier),
             ) as cursor:
-                await self._db.commit()
+                await db.commit()
                 return cursor.rowcount > 0
 
         normalized_username = normalized_identifier.lstrip("@").lower()
-        async with self._db.execute(
+        async with db.execute(
             """
             DELETE FROM channel_monitors
             WHERE owner_user_id = ?
@@ -135,7 +146,7 @@ class MonitorStore:
             """,
             (owner_user_id, normalized_username),
         ) as cursor:
-            await self._db.commit()
+            await db.commit()
             return cursor.rowcount > 0
 
     @staticmethod

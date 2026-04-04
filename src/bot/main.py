@@ -1,35 +1,70 @@
 import asyncio
 import logging
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, cast
 
+if TYPE_CHECKING:
+    from collections.abc import Awaitable
+
+    from telethon import TelegramClient
+
+    from bot.domain.protocols import SupportsGetEntity
+    from bot.infrastructure.search.tavily import TavilySearchClient
+
+import aiosqlite
 from aiogram import Bot, Dispatcher
 
+from bot.config.config import load_settings
+from bot.config.constants import PROJECT_ROOT
 from bot.handlers import OwnerOnlyMiddleware
-from bot.handlers.channels import setup_channel_monitoring
 from bot.handlers.commands import setup_commands
 from bot.handlers.messages import setup_messages
-from bot.infrastructure.open_router.openrouter import OpenRouterClient
-from bot.infrastructure.telegram_client.telethon_client import create_telethon_client
-from bot.infrastructure.websearch_engine.tavily_search import TavilySearchClient
-from bot.services.channels import ChannelService
+from bot.infrastructure.openrouter.openrouter import OpenRouterClient
 from bot.services.conversation import ConversationManager
 from bot.services.deep_research import DeepResearchService
+from bot.services.health import HealthService
 from bot.services.llm import AsyncToolExecutor, LLMService
 from bot.services.memory import MemoryStore
 from bot.services.monitors import MonitorService, MonitorStore
+from bot.services.scheduler import BotSchedulerService
 from bot.services.vault import VaultService
-from bot.shared.config import load_settings
-from bot.shared.constants import PROJECT_ROOT
+from bot.services.web_search_router import WebSearchRouter
 from bot.tools.channel_tools import register_channel_tools
 from bot.tools.memory_tools import register_memory_tools
 from bot.tools.registry import ToolRegistry
-from bot.tools.vault_tools import register_vault_tools
+from bot.tools.scheduler_tools import (
+    build_list_schedules_executor,
+    build_remove_schedule_executor,
+    build_schedule_executor,
+    register_scheduler_tools,
+)
+from bot.tools.vault_tools import build_vault_async_tools, register_vault_tools
 from bot.tools.web_tools import register_web_tools
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
+
+
+def _build_search_router(tavily: "TavilySearchClient | None") -> WebSearchRouter:
+    """Create and configure the multi-source web search router."""
+    from bot.infrastructure.search.arxiv import ArxivSearchClient  # noqa: PLC0415
+    from bot.infrastructure.search.github import GitHubSearchClient  # noqa: PLC0415
+    from bot.infrastructure.search.huggingface import HuggingFaceSearchClient  # noqa: PLC0415
+    from bot.infrastructure.search.reddit import RedditSearchClient  # noqa: PLC0415
+    from bot.infrastructure.search.stackoverflow import StackOverflowSearchClient  # noqa: PLC0415
+    from bot.infrastructure.search.wikipedia import WikipediaSearchClient  # noqa: PLC0415
+
+    return WebSearchRouter(
+        tavily=tavily,
+        github=GitHubSearchClient(),
+        huggingface=HuggingFaceSearchClient(),
+        stackoverflow=StackOverflowSearchClient(),
+        arxiv=ArxivSearchClient(),
+        wikipedia=WikipediaSearchClient(),
+        reddit=RedditSearchClient(),  # type: ignore  # noqa: PGH003
+    )
 
 
 def _find_session() -> Path | None:
@@ -46,15 +81,15 @@ def _find_session() -> Path | None:
     return None
 
 
-async def _try_connect_telethon(api_id: int, api_hash: str) -> Any | None:
+async def _try_connect_telethon(api_id: int, api_hash: str) -> "TelegramClient | None":
     """Try to connect Telethon using an existing session. Returns client or None."""
     session = _find_session()
     if not session:
-        logger.warning(
-            "No Telethon session found. "
-            "Run 'python scripts/auth_telethon.py' first for channel features."
-        )
+        logger.warning("No Telethon session found. Run 'python scripts/auth_telethon.py' first for channel features.")
         return None
+
+    # Lazy import: Telethon is heavy (~25ms) and only needed when a session exists
+    from bot.infrastructure.telethon.telethon_client import create_telethon_client  # noqa: PLC0415
 
     session_name = str(session.with_suffix(""))
     client = create_telethon_client(
@@ -63,11 +98,8 @@ async def _try_connect_telethon(api_id: int, api_hash: str) -> Any | None:
     try:
         await client.connect()
         if not await client.is_user_authorized():
-            logger.warning(
-                "Telethon session expired. "
-                "Run 'python scripts/auth_telethon.py' to re-authenticate."
-            )
-            await client.disconnect()
+            logger.warning("Telethon session expired. Run 'python scripts/auth_telethon.py' to re-authenticate.")
+            await cast("Awaitable[None]", client.disconnect())
             return None
     except Exception as e:  # noqa: BLE001
         logger.warning("Telethon connection failed: %s", e)
@@ -96,16 +128,15 @@ def _recall_executor(memory: MemoryStore) -> AsyncToolExecutor:
             return f"No memories found for '{query}'"
         lines = [f"Found {len(results)} memory(ies):"]
         for r in results:
-            line = f"- [{r['category'] or 'general'}] {r['fact']}"
-            if r.get("created_at"):
-                line += f" (saved: {r['created_at'][:10]})"
-            lines.append(line)
+            created = r.get("created_at")
+            suffix = f" (saved: {created[:10]})" if created else ""
+            lines.append(f"- [{r['category'] or 'general'}] {r['fact']}{suffix}")
         return "\n".join(lines)
 
     return executor
 
 
-async def run() -> None:  # noqa: PLR0915
+async def run() -> None:  # noqa: PLR0914, PLR0915
     """Initialize all components and start both clients."""
     settings = load_settings()
 
@@ -122,14 +153,24 @@ async def run() -> None:  # noqa: PLR0915
 
     tavily = None
     if settings.tavily_api_key:
+        from bot.infrastructure.search.tavily import TavilySearchClient  # noqa: PLC0415
+
         tavily = TavilySearchClient(api_key=settings.tavily_api_key)
     else:
         logger.warning("TAVILY_API_KEY not set. Web search disabled.")
 
+    search_router = _build_search_router(tavily)
+
+    # --- Shared SQLite connection (one file, one connection) ---
+    db_file = Path(settings.memory_db_path)
+    db_file.parent.mkdir(parents=True, exist_ok=True)
+    shared_db = await aiosqlite.connect(db_file)
+    shared_db.row_factory = aiosqlite.Row
+
     # --- Memory & monitor persistence ---
-    memory = MemoryStore(db_path=settings.memory_db_path)
+    memory = MemoryStore(db_path=settings.memory_db_path, db=shared_db)
     await memory.init()
-    monitor_store = MonitorStore(db_path=settings.memory_db_path)
+    monitor_store = MonitorStore(db_path=settings.memory_db_path, db=shared_db)
     await monitor_store.init()
 
     # Telethon: connect only if session exists (non-blocking)
@@ -150,15 +191,19 @@ async def run() -> None:  # noqa: PLR0915
         vault_path=settings.vault.path,
         default_folder=settings.vault.default_folder,
     )
-    monitor_service = MonitorService(store=monitor_store, client=userbot)
+    monitor_service = MonitorService(
+        store=monitor_store,
+        client=cast("SupportsGetEntity | None", userbot),
+    )
 
     # --- Tools ---
     registry = ToolRegistry()
-    register_vault_tools(registry, vault)
+    register_vault_tools(registry)
     register_channel_tools(registry)
     if tavily:
         register_web_tools(registry)
     register_memory_tools(registry)
+    register_scheduler_tools(registry)
 
     # --- LLM Service ---
     llm = LLMService(
@@ -167,11 +212,34 @@ async def run() -> None:  # noqa: PLR0915
         registry=registry,
         max_tokens=settings.llm.max_tokens,
         temperature=settings.llm.temperature,
+        tz_offset_hours=settings.scheduler.tz_offset_hours,
     )
     deep_research = DeepResearchService(llm=llm)
 
+    # --- Health Service ---
+    health = HealthService(
+        start_time=datetime.now(UTC),
+        model=settings.llm.default_model,
+        vault_path=settings.vault.path,
+    )
+    health.set_memory_store(memory)
+    health.set_monitor_store(monitor_store)
+    health.set_vault_service(vault)
+    health.set_conversations(conversations)
+    health.set_telethon_connected(connected=userbot is not None)
+    health.set_tavily_available(available=tavily is not None)
+    health.set_deep_research_available(available=True)
+    health.set_owner_user_id(settings.owner_user_id)
+
+    # --- Wire async vault tools to LLM ---
+    for tool_name, executor in build_vault_async_tools(vault).items():
+        llm.register_async_tool(tool_name, executor)
+
     # --- Wire async channel tools to LLM ---
     if userbot:
+        from bot.handlers.channels import setup_channel_monitoring  # noqa: PLC0415
+        from bot.services.channels import ChannelService  # noqa: PLC0415
+
         channel_service = ChannelService(
             userbot,
             monitor_service=monitor_service,
@@ -180,12 +248,27 @@ async def run() -> None:  # noqa: PLR0915
         llm.register_async_tool("fetch_messages", channel_service.fetch_messages)
         llm.register_async_tool("search_channel", channel_service.search_channel)
 
+        setup_channel_monitoring(
+            userbot=userbot,
+            monitor_service=monitor_service,
+        )
+
     if tavily:
-        llm.register_async_tool("web_search", tavily.search)
+        llm.register_async_tool("web_search", search_router.search)
 
     # --- Wire memory tools to LLM ---
     llm.register_async_tool("save_memory", _save_executor(memory))
     llm.register_async_tool("recall_memory", _recall_executor(memory))
+
+    # --- Scheduler ---
+    scheduler = BotSchedulerService(
+        jobs_file=str(PROJECT_ROOT / "data" / "jobs.json"),
+        owner_chat_id=settings.owner_user_id,
+        tz_offset_hours=settings.scheduler.tz_offset_hours,
+    )
+    llm.register_async_tool("schedule", build_schedule_executor(scheduler))
+    llm.register_async_tool("list_schedules", build_list_schedules_executor(scheduler))
+    llm.register_async_tool("remove_schedule", build_remove_schedule_executor(scheduler))
 
     # --- Aiogram Bot ---
     bot = Bot(token=settings.bot_token)
@@ -200,6 +283,7 @@ async def run() -> None:  # noqa: PLR0915
             conversations=conversations,
             monitor_service=monitor_service,
             deep_research=deep_research,
+            health=health,
         )
     )
     dp.include_router(
@@ -209,12 +293,15 @@ async def run() -> None:  # noqa: PLR0915
         )
     )
 
-    # --- Channel Monitoring ---
-    if userbot:
-        setup_channel_monitoring(
-            userbot=userbot,
-            monitor_service=monitor_service,
-        )
+    # --- Start scheduler ---
+    async def _send_reminder(chat_id: int, text: str) -> None:
+        try:
+            await bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
+        except Exception:  # noqa: BLE001
+            logger.warning("Reminder Markdown send failed, retrying as plain text")
+            await bot.send_message(chat_id=chat_id, text=text)
+
+    scheduler.start(asyncio.get_running_loop(), _send_reminder)
 
     # --- Start ---
     logger.info("Starting Telegram Assistant Bot...")
@@ -229,13 +316,16 @@ async def run() -> None:  # noqa: PLR0915
     try:
         await dp.start_polling(bot)
     finally:
+        scheduler.stop()
         await openrouter.close()
         if tavily:
             await tavily.close()
+        await search_router.close()
         await memory.close()
         await monitor_store.close()
+        await shared_db.close()
         if userbot:
-            await userbot.disconnect()
+            await cast("Awaitable[None]", userbot.disconnect())
         await bot.session.close()
         logger.info("Shutdown complete")
 

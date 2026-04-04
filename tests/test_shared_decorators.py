@@ -64,7 +64,7 @@ async def test_chain_fallbacks_uses_next_successful_function() -> None:
         return f"fallback:{value}"
 
     @chain_fallbacks(
-        fallback_functions=[fallback_one, fallback_two],
+        fallback_functions=[fallback_one, fallback_two],  # type: ignore
         handled_exceptions=(LookupError,),
     )
     async def primary(_: str) -> str:
@@ -173,7 +173,7 @@ async def test_validate_output_rejects_invalid_result() -> None:
     @validate_output()
     async def build_payload() -> list[int]:
         await asyncio.sleep(0)
-        return ["bad"]
+        return ["bad"]  # type: ignore
 
     with pytest.raises(ValueError, match="Output validation failed"):
         await build_payload()

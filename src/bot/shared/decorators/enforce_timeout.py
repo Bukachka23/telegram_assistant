@@ -2,7 +2,7 @@ import asyncio
 import functools
 from collections.abc import Awaitable, Callable
 
-from bot.shared.constants import P, R
+from bot.config.constants import P, R
 
 
 def enforce_timeout(
@@ -22,8 +22,9 @@ def enforce_timeout(
                     timeout=timeout_seconds,
                 )
             except TimeoutError as error:
+                func_name = getattr(func, "__name__", repr(func))
                 msg = (
-                    f"Function {func.__name__} timed out "
+                    f"Function {func_name} timed out "
                     f"after {timeout_seconds}s"
                 )
                 raise TimeoutError(msg) from error

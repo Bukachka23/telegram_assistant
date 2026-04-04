@@ -21,7 +21,7 @@ class TestMessage:
     def test_frozen(self):
         msg = Message(role=Role.USER, content="hello")
         try:
-            msg.content = "changed"
+            msg.content = "changed"  # type: ignore
             raise AssertionError("Should be frozen")
         except AttributeError:
             pass
@@ -35,7 +35,7 @@ class TestConversation:
 
     def test_trim_preserves_system(self):
         conv = Conversation(user_id=123, model="test")
-        conv.add(Message(role=Role.SYSTEM, content="system prompt"))
+        conv.add(Message(role=Role.SYSTEM, content="system prompts"))
         for i in range(10):
             conv.add(Message(role=Role.USER, content=f"msg {i}"))
 

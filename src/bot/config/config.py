@@ -7,7 +7,15 @@ from pydantic import Field
 from pydantic_settings import BaseSettings
 
 from bot.config.constants import CWD, PROJECT_ROOT
-from bot.domain.models.config import ChannelsConfig, ConversationConfig, LLMConfig, SchedulerConfig, StreamingConfig, VaultConfig
+from bot.domain.models.config import (
+    ChannelsConfig,
+    ConversationConfig,
+    LLMConfig,
+    SchedulerConfig,
+    StreamingConfig,
+    TelegraphConfig,
+    VaultConfig,
+)
 
 
 class Settings(BaseSettings):
@@ -28,6 +36,7 @@ class Settings(BaseSettings):
     streaming: StreamingConfig = Field(default_factory=StreamingConfig)
     channels: ChannelsConfig = Field(default_factory=ChannelsConfig)
     scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)
+    telegraph: TelegraphConfig = Field(default_factory=TelegraphConfig)
 
     model_config = {"env_file": str(PROJECT_ROOT / ".env"), "extra": "ignore"}
 

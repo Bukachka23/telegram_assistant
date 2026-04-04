@@ -16,3 +16,7 @@ class ChannelError(BotError):
 
 class WebSearchError(BotError):
     """Raised when web search API calls fail."""
+
+
+class TelegraphError(BotError):
+    """Raised when Telegraph API operations fail."""

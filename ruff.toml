@@ -129,6 +129,14 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
+"bot/prompts/*.py" = [
+    "E501",    # Long lines acceptable in prompt strings
+    "RUF001",  # Ambiguous unicode chars are intentional (math symbols, typographic dashes)
+]
+"src/bot/prompts/*.py" = [
+    "E501",    # Long lines acceptable in prompt strings
+    "RUF001",  # Ambiguous unicode chars are intentional (math symbols, typographic dashes)
+]
 "tests/*" = [
     "S101",    # Use of assert (expected in tests)
     "S105",    # Hardcoded passwords (test fixtures)

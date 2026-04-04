@@ -21,7 +21,7 @@ import very.deep.module as mod
 **Empty `__init__.py` is often correct.** Only add exports when you want to define a public API:
 
 ```python
-# src/my_project/domain/__init__.py
+# src/my_project/domain/protocols.py
 # Keep empty if modules are imported directly
 
 # OR define public API explicitly:

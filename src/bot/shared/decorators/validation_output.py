@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable
 
 from pydantic import TypeAdapter, ValidationError
 
-from bot.shared.constants import P, R
+from bot.config.constants import P, R
 
 
 def validate_output() -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
@@ -14,8 +14,9 @@ def validate_output() -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Await
         signature = inspect.signature(func)
         return_annotation = signature.return_annotation
 
+        func_name = getattr(func, "__name__", repr(func))
         if return_annotation is inspect.Signature.empty:
-            msg = f"Function {func.__name__} requires a return type annotation"
+            msg = f"Function {func_name} requires a return type annotation"
             raise TypeError(msg)
 
         adapter = TypeAdapter(return_annotation)
@@ -26,7 +27,7 @@ def validate_output() -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Await
             try:
                 return adapter.validate_python(raw_result)
             except ValidationError as error:
-                msg = f"Output validation failed for {func.__name__}"
+                msg = f"Output validation failed for {func_name}"
                 raise ValueError(msg) from error
 
         return wrapper

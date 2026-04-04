@@ -1,8 +1,8 @@
 import functools
 import time
-from collections.abc import Awaitable, Callable, Hashable
+from collections.abc import Awaitable, Callable, Hashable, Mapping
 
-from bot.shared.constants import P, R
+from bot.config.constants import P, R
 
 CacheKey = tuple[tuple[Hashable, ...], tuple[tuple[str, Hashable], ...]]
 
@@ -20,17 +20,24 @@ def _freeze_value(value: object) -> Hashable:
     return repr(value)
 
 
-def _make_cache_key(args: tuple[object, ...], kwargs: dict[str, object]) -> CacheKey:
+def _make_cache_key(args: tuple[object, ...], kwargs: Mapping[str, object]) -> CacheKey:
     """Build a deterministic cache key from args and kwargs."""
     frozen_args = tuple(_freeze_value(arg) for arg in args)
     frozen_kwargs = tuple(sorted((key, _freeze_value(value)) for key, value in kwargs.items()))
     return frozen_args, frozen_kwargs
 
 
-def cache_with_ttl(ttl_seconds: float) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
+def cache_with_ttl(
+    ttl_seconds: float,
+    *,
+    max_size: int = 256,
+) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
     """Cache async function results for a limited time based on call arguments."""
     if ttl_seconds <= 0:
         msg = "ttl_seconds must be greater than 0"
+        raise ValueError(msg)
+    if max_size < 1:
+        msg = "max_size must be at least 1"
         raise ValueError(msg)
 
     def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
@@ -47,6 +54,19 @@ def cache_with_ttl(ttl_seconds: float) -> Callable[[Callable[P, Awaitable[R]]], 
                 if current_time - timestamp < ttl_seconds:
                     return cached_value
                 del cache_store[cache_key]
+
+            if len(cache_store) >= max_size:
+                # Sweep all expired entries first
+                expired = [
+                    k for k, (ts, _) in cache_store.items()
+                    if current_time - ts >= ttl_seconds
+                ]
+                for k in expired:
+                    del cache_store[k]
+                # Still at capacity — evict the single oldest entry
+                if len(cache_store) >= max_size:
+                    oldest = min(cache_store, key=lambda k: cache_store[k][0])
+                    del cache_store[oldest]
 
             result = await func(*args, **kwargs)
             cache_store[cache_key] = (current_time, result)

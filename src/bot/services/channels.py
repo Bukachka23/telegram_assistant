@@ -1,12 +1,10 @@
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
-from telethon import TelegramClient
 from telethon.errors import RPCError
 
-from bot.domain.exceptions import ChannelError
-from bot.domain.protocols.monitor_resolver import MessageFetcher, MonitorResolver, ResolvedChannel
-from bot.shared.constants import (
+from bot.config.constants import (
     CHANNEL_REQUEST_BASE_DELAY_SECONDS,
     CHANNEL_REQUEST_MAX_ATTEMPTS,
     CHANNEL_REQUEST_TIMEOUT_SECONDS,
@@ -14,9 +12,24 @@ from bot.shared.constants import (
     LIMIT_CHANNELS,
     LIMIT_MESSAGES,
 )
+from bot.domain.exceptions import ChannelError
+from bot.domain.protocols import MessageFetcher, MonitorResolver, ResolvedChannel
 from bot.shared.decorators import enforce_timeout, retry_with_backoff
 
 logger = logging.getLogger(__name__)
+
+
+from bot.domain.models import PersistedMonitor  # noqa: E402 — after logger
+
+
+def _find_matching_monitor(
+    monitors: list[PersistedMonitor], chat_id: int, text: str
+) -> PersistedMonitor | None:
+    """Return the first monitor whose chat_id and keywords match *text*."""
+    return next(
+        (m for m in monitors if m.chat_id == chat_id and m.matches(text)),
+        None,
+    )
 
 
 class ChannelService:
@@ -24,7 +37,7 @@ class ChannelService:
 
     def __init__(
         self,
-        client: TelegramClient,
+        client: Any,  # noqa: ANN401
         *,
         monitor_service: MonitorResolver | None = None,
         owner_user_id: int | None = None,
@@ -120,13 +133,11 @@ class ChannelService:
             return channel_ref
         return monitor.chat_id
 
-    async def _fetch_messages_once(self, channel: ResolvedChannel, limit: int, search_query: str | None) -> list:
+    async def _fetch_messages_once(self, channel: ResolvedChannel, limit: int, search_query: str | None) -> list[Any]:
         """Fetch messages from Telethon once, without retries or formatting."""
         entity = await self._client.get_entity(channel)
         if search_query:
-            return await self._client.get_messages(
-                entity,
-                limit=limit,
-                search=search_query,
-            )
-        return await self._client.get_messages(entity, limit=limit)
+            return cast("list[Any]", await self._client.get_messages(
+                entity, limit=limit, search=search_query,
+            ))
+        return cast("list[Any]", await self._client.get_messages(entity, limit=limit))

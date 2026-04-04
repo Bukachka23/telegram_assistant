@@ -1,4 +1,4 @@
-from bot.shared.constants import ASYNC_TOOL_PREFIX
+from bot.config.constants import ASYNC_TOOL_PREFIX
 from bot.tools.registry import ToolRegistry
 
 

@@ -1,6 +1,7 @@
 """Tests for Markdown → Telegram HTML conversion."""
 
-from bot.services.formatting import md_to_tg_html
+from bot.config.constants import MAX_TG_TEXT
+from bot.services.formatting import md_to_tg_html, split_for_telegram
 
 
 class TestHeaders:
@@ -163,3 +164,49 @@ class TestComplexContent:
         result = md_to_tg_html(text)
         assert "<b>" in result
         assert "Ітератор" in result
+
+
+class TestSplitForTelegram:
+    def test_short_text_returns_single_chunk(self):
+        result = split_for_telegram("Hello world")
+        assert len(result) == 1
+        assert "Hello world" in result[0]
+
+    def test_empty_text_returns_empty_list(self):
+        assert split_for_telegram("") == []
+        assert split_for_telegram("   ") == []
+
+    def test_long_text_splits_into_multiple_chunks(self):
+        paragraphs = [f"## Section {i}\n\nParagraph {i} content. " * 20 for i in range(30)]
+        long_text = "\n\n".join(paragraphs)
+        assert len(long_text) > MAX_TG_TEXT
+
+        chunks = split_for_telegram(long_text)
+        assert len(chunks) > 1
+        for chunk in chunks:
+            assert len(chunk) <= MAX_TG_TEXT
+
+    def test_all_content_preserved_across_chunks(self):
+        paragraphs = [f"Unique marker {i}" for i in range(50)]
+        long_text = "\n\n".join(paragraphs)
+        # Make it actually long enough to split
+        long_text = long_text + "\n\n" + "x" * (MAX_TG_TEXT - 100)
+
+        chunks = split_for_telegram(long_text)
+        combined = "\n".join(chunks)
+        for i in range(50):
+            assert f"Unique marker {i}" in combined
+
+    def test_each_chunk_is_valid_html(self):
+        blocks = [
+            f"## Title {i}\n\n**Bold {i}** and *italic {i}*.\n\n"
+            f"{'Some detailed explanation text. ' * 30}\n\n- item {i}a\n- item {i}b"
+            for i in range(20)
+        ]
+        long_text = "\n\n".join(blocks)
+        assert len(long_text) > MAX_TG_TEXT
+
+        chunks = split_for_telegram(long_text)
+        assert len(chunks) > 1
+        for chunk in chunks:
+            assert len(chunk) <= MAX_TG_TEXT

@@ -5,7 +5,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from bot.infrastructure.open_router.openrouter import OpenRouterClient, StreamDelta
+from bot.infrastructure.openrouter.openrouter import OpenRouterClient
+from bot.infrastructure.openrouter.utils import parse_sse
+from bot.domain.models import StreamDelta
 
 
 def _make_sse_lines(chunks: list[dict]) -> list[str]:
@@ -51,7 +53,7 @@ class TestOpenRouterClient:
         mock_response.aiter_lines = MagicMock(return_value=_async_iter(lines))
 
         deltas: list[StreamDelta] = []
-        async for delta in client._parse_sse(mock_response):
+        async for delta in parse_sse(mock_response):
             deltas.append(delta)
 
         assert len(deltas) == 3
@@ -73,7 +75,7 @@ class TestOpenRouterClient:
         mock_response.aiter_lines = MagicMock(return_value=_async_iter(lines))
 
         deltas: list[StreamDelta] = []
-        async for delta in client._parse_sse(mock_response):
+        async for delta in parse_sse(mock_response):
             deltas.append(delta)
 
         assert len(deltas) == 1  # Tool calls yielded at [DONE]
@@ -91,7 +93,7 @@ class TestOpenRouterClient:
         mock_response.status_code = 200
         mock_response.aiter_lines = MagicMock(return_value=_async_iter(lines))
 
-        deltas = [d async for d in client._parse_sse(mock_response)]
+        deltas = [d async for d in parse_sse(mock_response)]
         assert deltas == []
 
 

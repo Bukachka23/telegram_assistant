@@ -7,13 +7,17 @@ from bot.services.conversation import ConversationManager
 from bot.shared.agents.registry import DEFAULT_AGENT_NAME, get_default_agent
 
 
-def _make_manager(**kwargs) -> ConversationManager:
-    defaults = {
-        "default_model": "test-model",
-        "session_timeout_minutes": 30,
-        "max_history": 50,
-    }
-    return ConversationManager(**{**defaults, **kwargs})
+def _make_manager(
+    *,
+    default_model: str = "test-model",
+    session_timeout_minutes: int = 30,
+    max_history: int = 50,
+) -> ConversationManager:
+    return ConversationManager(
+        default_model=default_model,
+        session_timeout_minutes=session_timeout_minutes,
+        max_history=max_history,
+    )
 
 
 def test_new_session_has_default_system_prompt_and_agent() -> None:

@@ -265,7 +265,7 @@ Expected: FAIL
 **Step 3: Write the implementation**
 
 ```python
-from bot.shared.constants import ASYNC_TOOL_PREFIX
+from bot.config.constants import ASYNC_TOOL_PREFIX
 from bot.tools.registry import ToolRegistry
 
 
@@ -432,7 +432,7 @@ Expected: All pass
 **Step 5: Commit**
 
 ```bash
-git add src/bot/main.py src/bot/shared/agents/configs.py src/bot/shared/config.py
+git add src/bot/main.py src/bot/shared/agents/agents.py src/bot/shared/config.py
 git commit -m "feat(memory): wire memory store and tools into bot"
 ```
 
@@ -488,7 +488,7 @@ Expected: All pass
 **Step 3: Commit**
 
 ```bash
-git add src/bot/shared/prompt/system_prompt.py
+git add src/bot/shared/prompts/system_prompt.py
 git commit -m "feat(memory): update system prompt with memory tool guidance"
 ```
 

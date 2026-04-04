@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
+from bot.config.constants import PROJECT_ROOT
 from bot.main import _find_session
-from bot.shared.constants import PROJECT_ROOT
 
 
 def _move_if_exists(source: Path, destination: Path) -> None:

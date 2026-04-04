@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from bot.domain.exceptions import WebSearchError
-from bot.infrastructure.websearch_engine.tavily_search import TavilySearchClient
+from bot.infrastructure.search.tavily import TavilySearchClient
 from bot.tools.registry import ToolRegistry
 from bot.tools.web_tools import register_web_tools
 

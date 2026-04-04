@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-import sys, json
+import json
+import sys
+
 
 def main():
     payload = json.loads(sys.argv[1])
@@ -47,6 +49,7 @@ def main():
         result = {"error": f"Unknown tool: {tool_name}"}
 
     print(json.dumps(result) if isinstance(result, dict) else str(result))
+
 
 if __name__ == "__main__":
     main()

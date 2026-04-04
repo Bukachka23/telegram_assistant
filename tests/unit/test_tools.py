@@ -7,7 +7,7 @@ import pytest
 from bot.services.vault import VaultService
 from bot.tools.channel_tools import register_channel_tools
 from bot.tools.registry import ToolRegistry
-from bot.tools.vault_tools import register_vault_tools
+from bot.tools.vault_tools import build_vault_async_tools, register_vault_tools
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def vault(tmp_path: Path) -> VaultService:
 @pytest.fixture
 def registry(vault: VaultService) -> ToolRegistry:
     reg = ToolRegistry()
-    register_vault_tools(reg, vault)
+    register_vault_tools(reg)
     register_channel_tools(reg)
     return reg
 
@@ -59,40 +59,45 @@ class TestToolRegistry:
 
 
 class TestVaultToolExecution:
-    def test_search_vault(self, registry: ToolRegistry):
-        result = registry.execute("search_vault", {"query": "Python"})
+    """Vault tools are async — test via the async executors."""
+
+    @pytest.fixture
+    def executors(self, vault: VaultService) -> dict[str, object]:
+        return build_vault_async_tools(vault)  # type: ignore
+
+    async def test_search_vault(self, executors):
+        result = await executors["search_vault"](query="Python")
         assert "python.md" in result
 
-    def test_search_vault_no_results(self, registry: ToolRegistry):
-        result = registry.execute("search_vault", {"query": "nonexistent_xyz"})
+    async def test_search_vault_no_results(self, executors):
+        result = await executors["search_vault"](query="nonexistent_xyz")
         assert "No notes found" in result
 
-    def test_read_note(self, registry: ToolRegistry):
-        result = registry.execute("read_note", {"path": "notes/python.md"})
+    async def test_read_note(self, executors):
+        result = await executors["read_note"](path="notes/python.md")
         assert "Decorators" in result
 
-    def test_list_notes(self, registry: ToolRegistry):
-        result = registry.execute("list_notes", {})
+    async def test_list_notes(self, executors):
+        result = await executors["list_notes"]()
         assert "python.md" in result
         assert "rust.md" in result
 
-    def test_create_note(self, registry: ToolRegistry):
-        result = registry.execute(
-            "create_note",
-            {"path": "notes/new.md", "content": "# New"},
-        )
+    async def test_create_note(self, executors):
+        result = await executors["create_note"](path="notes/new.md", content="# New")
         assert "Created" in result
 
-    def test_append_note(self, registry: ToolRegistry):
-        result = registry.execute(
-            "append_note",
-            {"path": "notes/python.md", "content": "## Extra"},
-        )
+    async def test_append_note(self, executors):
+        result = await executors["append_note"](path="notes/python.md", content="## Extra")
         assert "Appended" in result
 
-    def test_error_handling(self, registry: ToolRegistry):
-        result = registry.execute("read_note", {"path": "missing.md"})
-        assert "Error" in result
+    async def test_error_handling(self, executors):
+        with pytest.raises(Exception):
+            await executors["read_note"](path="missing.md")
+
+    def test_registry_returns_async_sentinel(self, registry: ToolRegistry):
+        """Sync registry.execute returns ASYNC_TOOL: for vault tools."""
+        result = registry.execute("search_vault", {"query": "test"})
+        assert result.startswith("ASYNC_TOOL:")
 
 
 class TestChannelToolPlaceholders:

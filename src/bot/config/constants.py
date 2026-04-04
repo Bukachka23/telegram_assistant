@@ -120,8 +120,6 @@ REDDIT_KEYWORDS = frozenset([
     "reddit", "r/", "subreddit", "upvote", "downvote", "ama", "thread",
 ])
 REDDIT_CACHE_TTL_SECONDS: float = 300.0   # 5 min — Reddit allows ~100 req per 6 min
-REDDIT_MAX_ATTEMPTS: int = 2
-REDDIT_BASE_DELAY_SECONDS: float = 2.0
 REDDIT_RATE_LIMIT_STATUS: int = 429
 
 # Wikipedia Configs

@@ -1,7 +1,8 @@
 import functools
 from collections.abc import Awaitable, Callable, Sequence
+from typing import cast
 
-from bot.shared.constants import P, R
+from bot.config.constants import P, R
 
 
 async def _try_call(
@@ -39,7 +40,7 @@ def chain_fallbacks(
                 **kwargs,
             )
             if succeeded:
-                return result
+                return cast("R", result)
 
             last_error = error
             for fallback in fallback_functions:
@@ -50,7 +51,7 @@ def chain_fallbacks(
                     **kwargs,
                 )
                 if succeeded:
-                    return result
+                    return cast("R", result)
                 last_error = error
 
             if last_error is None:

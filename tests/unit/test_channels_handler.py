@@ -56,7 +56,7 @@ def test_build_notification_includes_channel_title_and_keywords() -> None:
         keywords=["asyncio", "telethon"],
     )
 
-    result = channels_handler._build_notification("Useful asyncio update", monitor, "Python News")
+    result = channels_handler._build_notification(text="Useful asyncio update", monitor=monitor, chat_title="Python News")
 
     assert "📢 **Python News**" in result
     assert "Useful asyncio update" in result
@@ -67,7 +67,7 @@ def test_truncates_long_message_preview() -> None:
     monitor = PersistedMonitor(owner_user_id=1, chat_id=1001, title="Python", keywords=[])
     text = "a" * 350
 
-    result = channels_handler._build_notification(text, monitor, "Python News")
+    result = channels_handler._build_notification(text=text, monitor=monitor, chat_title="Python News")
 
     assert "a" * 300 in result
     assert "a" * 301 not in result

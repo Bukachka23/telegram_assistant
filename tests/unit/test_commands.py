@@ -109,10 +109,10 @@ class FakeDeepResearchService:
             "✅ Research complete after 1 cycle.",
         ]
 
-    async def run(self, *, query: str, model: str, on_progress, max_cycles: int = 3) -> str:
+    async def run(self, *, query: str, model: str, on_progress: object = None, max_cycles: int = 3) -> str:  # type: ignore[override]
         self.calls.append((query, model, max_cycles))
         for text in self.progress_messages:
-            await on_progress(text)
+            await on_progress(text)  # type: ignore
         if self.error is not None:
             raise self.error
         return self.result
@@ -156,6 +156,7 @@ async def test_start_command_mentions_agent_modes(
     assert "`/agent` — show current agent" in text
     assert "`/explanatory`" in text
     assert "`/deep <question>` — run multi-cycle deep research" in text
+    assert "`/status` — system health check" in text
     assert kwargs["parse_mode"] == "Markdown"
 
 
@@ -349,6 +350,32 @@ async def test_monitor_remove_deletes_persisted_monitor(
 
     assert monitor_service.monitors == []
     assert message.answers[0][0] == "✅ Removed -10055"
+
+
+@pytest.mark.asyncio
+async def test_status_command_returns_health_report(
+    conversations: ConversationManager,
+    monitor_service: FakeMonitorService,
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from bot.services.health import HealthService
+
+    health = HealthService(
+        start_time=datetime.now(UTC) - timedelta(hours=1),
+        model="test-model",
+        vault_path="/tmp/vault",
+    )
+    router = setup_commands(conversations, monitor_service, health=health)
+    handler = _get_handler(router, "cmd_status")
+    message = FakeMessage("/status")
+
+    await handler(message)
+
+    text, kwargs = message.answers[0]
+    assert "System Status" in text
+    assert "test-model" in text
+    assert kwargs["parse_mode"] == "Markdown"
 
 
 @pytest.mark.asyncio

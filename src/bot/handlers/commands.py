@@ -1,29 +1,31 @@
 import logging
-from typing import TYPE_CHECKING
+from collections.abc import Awaitable, Callable, Sequence
+from typing import TYPE_CHECKING, Any
 
 from aiogram import F, Router
 from aiogram.dispatcher.event.bases import SkipHandler
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 
+from bot.config.constants import (
+    MODEL_COMMAND_MIN_PARTS,
+    MONITOR_COMMAND_MIN_PARTS,
+    VAULT_COMMAND_MIN_PARTS,
+)
 from bot.domain.exceptions import LLMError
 from bot.domain.models import ForwardedChatLike, MonitorDisplay
+from bot.domain.protocols import DeepResearchServiceProtocol, MonitorServiceProtocol
 from bot.services.conversation import ConversationManager
-from bot.services.monitors import MonitorService
+from bot.services.formatting import split_for_telegram
 from bot.shared.agents.registry import (
     get_agent,
     get_agent_by_command,
     get_default_agent,
     list_agents,
 )
-from bot.shared.constants import (
-    MODEL_COMMAND_MIN_PARTS,
-    MONITOR_COMMAND_MIN_PARTS,
-    VAULT_COMMAND_MIN_PARTS,
-)
 
 if TYPE_CHECKING:
-    from bot.services.deep_research import DeepResearchService
+    from bot.services.health import HealthService
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +88,9 @@ def _extract_forwarded_chat(message: Message) -> ForwardedChatLike | None:
     return getattr(origin, "sender_chat", None)
 
 
-async def _handle_monitor_list(*, message: Message, owner_user_id: int, monitor_service: MonitorService) -> None:
+async def _handle_monitor_list(
+    *, message: Message, owner_user_id: int, monitor_service: MonitorServiceProtocol
+) -> None:
     monitors = await monitor_service.list_monitors(owner_user_id)
     if not monitors:
         await message.answer("No active monitors.")
@@ -99,8 +103,8 @@ async def _handle_monitor_list(*, message: Message, owner_user_id: int, monitor_
     await message.answer("\n".join(lines), parse_mode="Markdown")
 
 
-async def _handle_monitor_add(*, message: Message, args: list[str], owner_user_id: int,
-                              monitor_service: MonitorService) -> None:
+async def _handle_monitor_add(*, message: Message, args: Sequence[str], owner_user_id: int,
+                              monitor_service: MonitorServiceProtocol) -> None:
     if len(args) < MONITOR_COMMAND_MIN_PARTS:
         monitor_service.begin_pending_add(owner_user_id, [])
         await message.answer("📨 Forward me a message from the private channel you want to monitor.")
@@ -127,8 +131,8 @@ async def _handle_monitor_add(*, message: Message, args: list[str], owner_user_i
     await message.answer("📨 Forward me a message from the private channel you want to monitor.")
 
 
-async def _handle_monitor_remove(*, message: Message, args: list[str], owner_user_id: int,
-                                 monitor_service: MonitorService) -> None:
+async def _handle_monitor_remove(*, message: Message, args: Sequence[str], owner_user_id: int,
+                                 monitor_service: MonitorServiceProtocol) -> None:
     if len(args) < MONITOR_COMMAND_MIN_PARTS:
         await message.answer("Usage: /monitor remove @channel_or_chat_id")
         return
@@ -141,10 +145,44 @@ async def _handle_monitor_remove(*, message: Message, args: list[str], owner_use
         await message.answer(f"❌ {identifier} not found in monitors")
 
 
-def setup_commands(
+def _extract_query(text: str | None) -> str | None:
+    """Extract and validate the query string from the command text."""
+    if not text:
+        return None
+
+    args = text.split(maxsplit=1)
+    if len(args) < MODEL_COMMAND_MIN_PARTS or not args[1].strip():
+        return None
+
+    return args[1].strip()
+
+
+async def _execute_deep_research(
+    *,
+    deep_research: DeepResearchServiceProtocol,
+    query: str,
+    model: str,
+    user_id: int,
+    send_message: Callable[..., Awaitable[Any]],
+) -> str | None:
+    """Execute the deep research service and handle any resulting exceptions."""
+    try:
+        return await deep_research.run(query=query, model=model, on_progress=send_message)
+    except LLMError as error:
+        logger.exception("Deep research failed for user %d", user_id)
+        await send_message(f"⚠️ Deep research failed: {error}")
+        return None
+    except Exception:
+        logger.exception("Unexpected deep research error for user %d", user_id)
+        await send_message("⚠️ Deep research failed. Please try again.")
+        return None
+
+
+def setup_commands(  # noqa: PLR0915
     conversations: ConversationManager,
-    monitor_service: MonitorService,
-    deep_research: "DeepResearchService | None" = None,
+    monitor_service: MonitorServiceProtocol,
+    deep_research: DeepResearchServiceProtocol | None = None,
+    health: "HealthService | None" = None,
 ) -> Router:
     """Configure command handlers with dependencies."""
     router = Router(name="commands")
@@ -160,6 +198,7 @@ def setup_commands(
             "`/assistant`, `/explanatory`, `/math_tutor`, `/researcher` — direct agent mode switches\n"
             "`/model` — show or switch LLM model\n"
             "`/deep <question>` — run multi-cycle deep research\n"
+            "`/status` — system health check\n"
             "`/monitor` — list active monitors\n"
             "`/monitor add @channel kw1, kw2` — monitor a public channel\n"
             "`/monitor add [kw1, kw2]` — then forward a private channel message\n"
@@ -200,10 +239,7 @@ def setup_commands(
             return
 
         conversations.set_active_agent(message.from_user.id, selected_agent.name)
-        await message.answer(
-            _build_agent_switch_text(selected_agent.command),
-            parse_mode="Markdown",
-        )
+        await message.answer(_build_agent_switch_text(selected_agent.command), parse_mode="Markdown")
 
     @router.message(Command("model"))
     async def cmd_model(message: Message) -> None:
@@ -228,39 +264,48 @@ def setup_commands(
         conversations.clear(message.from_user.id)
         await message.answer("🗑 Conversation cleared.")
 
-    @router.message(Command("deep"))
-    async def cmd_deep(message: Message) -> None:
+    @router.message(Command("status"))
+    async def cmd_status(message: Message) -> None:
         if not message.from_user:
             return
+        if health is None:
+            await message.answer("⚠️ Health check is not available.")
+            return
+        try:
+            report = await health.check()
+            await message.answer(report.format_telegram(), parse_mode="Markdown")
+        except Exception:
+            logger.exception("Health check failed for user %d", message.from_user.id)
+            await message.answer("⚠️ Health check failed.")
+
+    @router.message(Command("deep"))
+    async def cmd_deep(message: Message) -> None:
+        """Handle the /deep command to perform deep research."""
+        if not message.from_user:
+            return
+
         if deep_research is None:
             await message.answer("⚠️ Deep research is not available right now.")
             return
 
-        args = (message.text or "").split(maxsplit=1)
-        if len(args) < MODEL_COMMAND_MIN_PARTS or not args[1].strip():
+        query = _extract_query(message.text)
+        if not query:
             await message.answer("Usage: /deep <question>")
             return
 
         user_id = message.from_user.id
-        query = args[1].strip()
         model = conversations.get_model(user_id)
+        answer = await _execute_deep_research(
+            deep_research=deep_research,
+            query=query,
+            model=model,
+            user_id=user_id,
+            send_message=message.answer,
+        )
 
-        try:
-            answer = await deep_research.run(
-                query=query,
-                model=model,
-                on_progress=message.answer,
-            )
-        except LLMError as error:
-            logger.exception("Deep research failed for user %d", user_id)
-            await message.answer(f"⚠️ Deep research failed: {error}")
-            return
-        except Exception:
-            logger.exception("Unexpected deep research error for user %d", user_id)
-            await message.answer("⚠️ Deep research failed. Please try again.")
-            return
-
-        await message.answer(answer)
+        if answer:
+            for chunk in split_for_telegram(answer):
+                await message.answer(chunk, parse_mode="HTML")
 
     @router.message(Command("monitor"))
     async def cmd_monitor(message: Message) -> None:

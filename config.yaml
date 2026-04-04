@@ -16,3 +16,12 @@ streaming:
 
 channels:
   monitor: []
+
+scheduler:
+  tz_offset_hours: 2  # Vienna CEST (UTC+2); change to 1 in winter (CET)
+
+telegraph:
+  enabled: true
+  threshold_chars: 8000
+  author_name: "Telegram Assistant"
+  author_url: ""

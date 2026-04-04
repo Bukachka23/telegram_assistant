@@ -2,12 +2,13 @@
 
 import asyncio
 import json
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
 from bot.domain.models import ToolCall
-from bot.infrastructure.open_router.openrouter import OpenRouterClient, StreamDelta
+from bot.infrastructure.openrouter.openrouter import OpenRouterClient, StreamDelta
 from bot.services.conversation import ConversationManager
 from bot.services.llm import LLMService
 from bot.shared.agents.registry import get_agent, get_default_agent
@@ -52,13 +53,13 @@ def conversations() -> ConversationManager:
 
 
 @pytest.fixture
-def mock_client() -> OpenRouterClient:
+def mock_client() -> Any:
     return MagicMock(spec=OpenRouterClient)
 
 
 @pytest.fixture
 def llm_service(
-    mock_client: OpenRouterClient,
+    mock_client: Any,
     conversations: ConversationManager,
     registry: ToolRegistry,
 ) -> LLMService:
@@ -78,7 +79,7 @@ async def _async_iter(items):
 @pytest.mark.asyncio
 async def test_simple_text_response_uses_default_agent_config(
     llm_service: LLMService,
-    mock_client: OpenRouterClient,
+    mock_client: Any,
 ) -> None:
     mock_client.stream_completion = MagicMock(
         return_value=_async_iter([
@@ -101,7 +102,7 @@ async def test_simple_text_response_uses_default_agent_config(
 @pytest.mark.asyncio
 async def test_switched_agent_uses_own_prompt_settings_and_tool_filter(
     llm_service: LLMService,
-    mock_client: OpenRouterClient,
+    mock_client: Any,
     conversations: ConversationManager,
 ) -> None:
     conversations.set_active_agent(1, "math_tutor")
@@ -124,7 +125,7 @@ async def test_switched_agent_uses_own_prompt_settings_and_tool_filter(
 @pytest.mark.asyncio
 async def test_unknown_active_agent_falls_back_to_default_config(
     llm_service: LLMService,
-    mock_client: OpenRouterClient,
+    mock_client: Any,
     conversations: ConversationManager,
 ) -> None:
     conversations.set_active_agent(1, "missing")
@@ -144,7 +145,7 @@ async def test_unknown_active_agent_falls_back_to_default_config(
 @pytest.mark.asyncio
 async def test_tool_call_then_text(
     llm_service: LLMService,
-    mock_client: OpenRouterClient,
+    mock_client: Any,
 ) -> None:
     call_count = 0
 
@@ -177,7 +178,7 @@ async def test_tool_call_then_text(
 @pytest.mark.asyncio
 async def test_async_tool_execution(
     llm_service: LLMService,
-    mock_client: OpenRouterClient,
+    mock_client: Any,
 ) -> None:
     async def mock_executor(**kwargs) -> str:
         del kwargs
@@ -216,7 +217,7 @@ async def test_async_tool_execution(
 @pytest.mark.asyncio
 async def test_invalid_tool_arguments_are_recorded_as_tool_error(
     llm_service: LLMService,
-    mock_client: OpenRouterClient,
+    mock_client: Any,
     conversations: ConversationManager,
 ) -> None:
     call_count = 0
@@ -252,7 +253,7 @@ async def test_invalid_tool_arguments_are_recorded_as_tool_error(
 @pytest.mark.asyncio
 async def test_disallowed_tool_call_is_rejected_for_active_agent(
     llm_service: LLMService,
-    mock_client: OpenRouterClient,
+    mock_client: Any,
     conversations: ConversationManager,
 ) -> None:
     conversations.set_active_agent(1, "math_tutor")
@@ -289,7 +290,7 @@ async def test_disallowed_tool_call_is_rejected_for_active_agent(
 @pytest.mark.asyncio
 async def test_complete_side_context_runs_tool_loop_without_conversation_state(
     llm_service: LLMService,
-    mock_client: OpenRouterClient,
+    mock_client: Any,
     conversations: ConversationManager,
 ) -> None:
     call_count = 0
@@ -316,7 +317,7 @@ async def test_complete_side_context_runs_tool_loop_without_conversation_state(
 
     result = await llm_service.complete_side_context(
         messages=[
-            {"role": "system", "content": "system prompt"},
+            {"role": "system", "content": "system prompts"},
             {"role": "user", "content": "research this"},
         ],
         model="test-model",

@@ -1,9 +1,9 @@
 import logging
 from datetime import UTC, datetime, timedelta
 
+from bot.config.constants import MAX_HISTORY, SESSION_TIMEOUT_MINUTES
 from bot.domain.models import Conversation, Message, Role
 from bot.shared.agents.registry import get_default_agent
-from bot.shared.constants import MAX_HISTORY, SESSION_TIMEOUT_MINUTES
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class ConversationManager:
         self._sessions.pop(user_id, None)
 
     def _new_session(self, user_id: int) -> Conversation:
-        """Create and store a fresh session with the default agent prompt."""
+        """Create and store a fresh session with the default agent prompts."""
         default_agent = get_default_agent()
         session = Conversation(
             user_id=user_id,

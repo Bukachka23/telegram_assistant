@@ -1,8 +1,9 @@
 import asyncio
 import functools
 from collections.abc import Awaitable, Callable
+from typing import cast
 
-from bot.shared.constants import BACKOFF_MULTIPLIER, BASE_DELAY_SECONDS, MAX_ATTEMPTS, P, R
+from bot.config.constants import BACKOFF_MULTIPLIER, BASE_DELAY_SECONDS, MAX_ATTEMPTS, P, R
 
 
 async def _call_once(
@@ -52,7 +53,7 @@ def retry_with_backoff(
                     **kwargs,
                 )
                 if succeeded:
-                    return result
+                    return cast("R", result)
 
                 last_error = error
                 if attempt == max_attempts:

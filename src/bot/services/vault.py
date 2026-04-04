@@ -1,9 +1,10 @@
+import asyncio
 import logging
 from pathlib import Path
 
+from bot.config.constants import MAX_RESULTS
 from bot.domain.exceptions import VaultError
 from bot.domain.models import Note
-from bot.shared.constants import MAX_RESULTS
 
 logger = logging.getLogger(__name__)
 
@@ -12,11 +13,39 @@ class VaultService:
     """Read and write operations on a local Obsidian vault directory."""
 
     def __init__(self, vault_path: str, *, default_folder: str = "notes") -> None:
-        self._root = Path(vault_path)
+        self._root = Path(vault_path).resolve()
         self._default_folder = default_folder
 
-    def search(self, query: str, *, max_results: int = MAX_RESULTS) -> list[Note]:
+    async def search(self, query: str, *, max_results: int = MAX_RESULTS) -> list[Note]:
         """Full-text search across all markdown files in the vault."""
+        return await asyncio.to_thread(self._search_sync, query, max_results=max_results)
+
+    async def read(self, path: str) -> Note:
+        """Read a specific note by relative path."""
+        return await asyncio.to_thread(self._read_sync, path)
+
+    async def count_notes(self) -> int:
+        """Count all markdown files in the vault (entire tree)."""
+        return await asyncio.to_thread(self._count_notes_sync)
+
+    async def list_folders(self, *, folder: str = "") -> list[str]:
+        """List immediate subdirectories in *folder* (or vault root)."""
+        return await asyncio.to_thread(self._list_folders_sync, folder=folder)
+
+    async def list_notes(self, *, folder: str = "") -> list[str]:
+        """List markdown files in a folder (or default folder)."""
+        return await asyncio.to_thread(self._list_notes_sync, folder=folder)
+
+    async def create(self, path: str, content: str) -> Note:
+        """Create a new note. Raises if it already exists."""
+        return await asyncio.to_thread(self._create_sync, path, content)
+
+    async def append(self, path: str, content: str) -> Note:
+        """Append content to an existing note."""
+        return await asyncio.to_thread(self._append_sync, path, content)
+
+    def _search_sync(self, query: str, *, max_results: int = MAX_RESULTS) -> list[Note]:
+        """Synchronous search implementation."""
         if not self._root.exists():
             msg = f"Vault not found: {self._root}"
             raise VaultError(msg)
@@ -33,27 +62,46 @@ class VaultService:
 
         return results
 
-    def read(self, path: str) -> Note:
-        """Read a specific note by relative path."""
+    def _read_sync(self, path: str) -> Note:
+        """Synchronous read implementation."""
         full_path = self._resolve(path)
         self._ensure_exists(full_path, path)
 
         content = full_path.read_text(encoding="utf-8")
         return Note(path=path, content=content)
 
-    def list_notes(self, *, folder: str = "") -> list[str]:
-        """List markdown files in a folder (or default folder)."""
-        target_folder = folder or self._default_folder
-        target_path = self._resolve(target_folder)
+    def _count_notes_sync(self) -> int:
+        """Synchronous note count across the whole vault."""
+        if not self._root.exists():
+            msg = f"Vault not found: {self._root}"
+            raise VaultError(msg)
+        return sum(1 for _ in self._root.rglob("*.md"))
 
-        if not target_path.exists() or not target_path.is_dir():
+    def _list_folders_sync(self, *, folder: str = "") -> list[str]:
+        """Synchronous list_folders implementation."""
+        target = self._root if not folder else self._find_case_insensitive(self._resolve(folder))
+        if target is None or not target.exists() or not target.is_dir():
+            msg = f"Folder not found: {folder}"
+            raise VaultError(msg)
+        return sorted(
+            str(p.relative_to(self._root))
+            for p in target.iterdir()
+            if p.is_dir() and not p.name.startswith(".")
+        )
+
+    def _list_notes_sync(self, *, folder: str = "") -> list[str]:
+        """Synchronous list_notes implementation."""
+        target_folder = folder or self._default_folder
+        target_path = self._find_case_insensitive(self._resolve(target_folder))
+
+        if target_path is None or not target_path.exists() or not target_path.is_dir():
             msg = f"Folder not found: {target_folder}"
             raise VaultError(msg)
 
         return sorted(str(f.relative_to(self._root)) for f in target_path.rglob("*.md"))
 
-    def create(self, path: str, content: str) -> Note:
-        """Create a new note. Raises if it already exists."""
+    def _create_sync(self, path: str, content: str) -> Note:
+        """Synchronous create implementation."""
         full_path = self._resolve(path)
         if full_path.exists():
             msg = f"Note already exists: {path}"
@@ -65,8 +113,8 @@ class VaultService:
 
         return Note(path=path, content=content)
 
-    def append(self, path: str, content: str) -> Note:
-        """Append content to an existing note."""
+    def _append_sync(self, path: str, content: str) -> Note:
+        """Synchronous append implementation."""
         full_path = self._resolve(path)
         self._ensure_exists(full_path, path)
 
@@ -86,6 +134,27 @@ class VaultService:
             raise VaultError(msg)
         return resolved
 
+    def _find_case_insensitive(self, path: Path) -> Path | None:
+        """Walk *path* component by component using case-insensitive matching."""
+        try:
+            parts = path.relative_to(self._root).parts
+        except ValueError:
+            return None
+
+        current = self._root
+        for part in parts:
+            if not current.is_dir():
+                return None
+            match = next(
+                (p for p in current.iterdir() if p.name.lower() == part.lower()),
+                None,
+            )
+            if match is None:
+                return None
+            current = match
+
+        return current
+
     def _search_file(self, file_path: Path, query_lower: str) -> Note | None:
         """Check a single file for the query and return a Note if matched."""
         content = self._safe_read_text(file_path)
@@ -101,7 +170,7 @@ class VaultService:
         """Verify that a file exists, raising VaultError if not."""
         if not full_path.exists():
             msg = f"Note not found: {original_path}"
-            raise ValueError(msg)
+            raise VaultError(msg)
 
     @staticmethod
     def _safe_read_text(file_path: Path) -> str | None:
