@@ -15,9 +15,10 @@ from bot.domain.models.config import (
     TelegraphConfig,
     VaultConfig,
 )
+from bot.domain.models.metrics import RequestMetric
 from bot.domain.models.monitors import ChannelFilter, PersistedMonitor
 from bot.domain.models.research import JudgeDecision, ResearchState
-from bot.domain.models.tools import StreamDelta, Tool, ToolCall, ToolResult
+from bot.domain.models.tools import StreamDelta, TokenUsage, Tool, ToolCall, ToolResult
 
 __all__ = [
     "AgentProfile",
@@ -34,9 +35,11 @@ __all__ = [
     "MonitorDisplay",
     "Note",
     "PersistedMonitor",
+    "RequestMetric",
     "ResearchState",
     "Role",
     "StreamDelta",
+    "TokenUsage",
     "StreamingConfig",
     "TelegraphConfig",
     "Tool",

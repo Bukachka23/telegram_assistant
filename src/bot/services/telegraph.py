@@ -1,13 +1,11 @@
-"""Telegraph publishing service — threshold check, formatting, preview."""
-
 from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from bot.domain.models.telegraph import TelegraphResult
 from bot.infrastructure.telegraph.formatting import build_page_content
 
 if TYPE_CHECKING:
@@ -20,22 +18,10 @@ _MAX_TITLE_LENGTH = 256
 _RE_MD_HEADERS = re.compile(r"^#{1,6}\s+", re.MULTILINE)
 
 
-@dataclass(frozen=True)
-class TelegraphResult:
-    """Published Telegraph page result."""
-
-    url: str
-    preview: str
-
-
 class TelegraphPublishService:
     """Decides when and how to publish responses to Telegra.ph."""
 
-    def __init__(
-        self,
-        client: TelegraphClient,
-        threshold_chars: int = 8000,
-    ) -> None:
+    def __init__(self, client: TelegraphClient, threshold_chars: int = 8000) -> None:
         self._client = client
         self._threshold = threshold_chars
 
@@ -51,17 +37,10 @@ class TelegraphPublishService:
         model: str,
         agent: str,
     ) -> TelegraphResult:
-        """Format, publish to Telegra.ph, and return URL + preview.
-
-        Raises:
-            TelegraphError: If the API call fails.
-        """
+        """Format, publish to Telegra.ph, and return URL + preview."""
         date = datetime.now(UTC).strftime("%Y-%m-%d")
         nodes = build_page_content(text, model=model, agent=agent, date=date)
-        url = await self._client.create_page(
-            title=title[:_MAX_TITLE_LENGTH],
-            content=nodes,
-        )
+        url = await self._client.create_page(title=title[:_MAX_TITLE_LENGTH], content=nodes)
         preview = self._build_preview(text)
         return TelegraphResult(url=url, preview=preview)
 
