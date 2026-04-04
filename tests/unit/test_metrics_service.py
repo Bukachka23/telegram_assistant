@@ -1,9 +1,5 @@
 """Tests for MetricsService — aggregation and /stats formatting."""
 
-from unittest.mock import AsyncMock
-
-import pytest
-
 from bot.services.metrics import MetricsService
 
 
@@ -108,7 +104,7 @@ class TestBuildStats:
         service = MetricsService(store=store)
         text = await service.build_stats(days=7)
         assert "web_search" in text
-        assert "×2" in text  # web_search appears twice
+        assert "x2" in text  # web_search appears twice
         assert "recall_memory" in text
         assert "search_vault" in text
 

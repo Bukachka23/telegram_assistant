@@ -91,7 +91,10 @@ class TestMetricsStoreQuery:
         db = store._get_db()
         old_date = (datetime.now(UTC) - timedelta(days=10)).isoformat()
         await db.execute(
-            "INSERT INTO request_metrics (model, tokens_in, tokens_out, cost_usd, latency_ms, ttfb_ms, tool_names, is_error, error_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO request_metrics"
+            " (model, tokens_in, tokens_out, cost_usd, latency_ms,"
+            " ttfb_ms, tool_names, is_error, error_text, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("old-model", 100, 200, 0.01, 1000, 300, "", 0, "", old_date),
         )
         await db.commit()
@@ -106,7 +109,10 @@ class TestMetricsStoreQuery:
         db = store._get_db()
         old_date = (datetime.now(UTC) - timedelta(days=100)).isoformat()
         await db.execute(
-            "INSERT INTO request_metrics (model, tokens_in, tokens_out, cost_usd, latency_ms, ttfb_ms, tool_names, is_error, error_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO request_metrics"
+            " (model, tokens_in, tokens_out, cost_usd, latency_ms,"
+            " ttfb_ms, tool_names, is_error, error_text, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("ancient", 50, 80, None, 500, 100, "", 0, "", old_date),
         )
         await db.commit()

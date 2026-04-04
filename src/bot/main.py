@@ -22,12 +22,14 @@ from bot.handlers import OwnerOnlyMiddleware
 from bot.handlers.commands import setup_commands
 from bot.handlers.messages import setup_messages
 from bot.infrastructure.openrouter.openrouter import OpenRouterClient
+from bot.infrastructure.storage.metrics_storage import MetricsStore as MetricsDBStore
 from bot.infrastructure.telegraph.client import TelegraphClient
 from bot.services.conversation import ConversationManager
 from bot.services.deep_research import DeepResearchService
 from bot.services.health import HealthService
 from bot.services.llm import AsyncToolExecutor, LLMService
 from bot.services.memory import MemoryStore
+from bot.services.metrics import MetricsService
 from bot.services.monitors import MonitorService, MonitorStore
 from bot.services.scheduler import BotSchedulerService
 from bot.services.telegraph import TelegraphPublishService
@@ -174,6 +176,8 @@ async def run() -> None:  # noqa: PLR0912, PLR0914, PLR0915
     await memory.init()
     monitor_store = MonitorStore(db_path=settings.memory_db_path, db=shared_db)
     await monitor_store.init()
+    metrics_db = MetricsDBStore(db_path=settings.memory_db_path, db=shared_db)
+    await metrics_db.init()
 
     # Telethon: connect only if session exists (non-blocking)
     userbot = None
@@ -215,8 +219,10 @@ async def run() -> None:  # noqa: PLR0912, PLR0914, PLR0915
         max_tokens=settings.llm.max_tokens,
         temperature=settings.llm.temperature,
         tz_offset_hours=settings.scheduler.tz_offset_hours,
+        metrics_store=metrics_db,
     )
     deep_research = DeepResearchService(llm=llm)
+    metrics_service = MetricsService(store=metrics_db)
 
     # --- Health Service ---
     health = HealthService(
@@ -231,6 +237,7 @@ async def run() -> None:  # noqa: PLR0912, PLR0914, PLR0915
     health.set_telethon_connected(connected=userbot is not None)
     health.set_tavily_available(available=tavily is not None)
     health.set_deep_research_available(available=True)
+    health.set_metrics_store(metrics_db)
     health.set_owner_user_id(settings.owner_user_id)
 
     # --- Telegraph (optional, graceful if disabled) ---
@@ -312,6 +319,7 @@ async def run() -> None:  # noqa: PLR0912, PLR0914, PLR0915
             deep_research=deep_research,
             health=health,
             telegraph=telegraph_service,
+            metrics=metrics_service,
         )
     )
     dp.include_router(

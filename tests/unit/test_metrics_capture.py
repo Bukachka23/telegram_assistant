@@ -1,21 +1,19 @@
 """Tests for usage/token capture from OpenRouter SSE stream."""
 
 import json
+import math
 from unittest.mock import MagicMock
 
-from bot.domain.models import StreamDelta, TokenUsage
 from bot.infrastructure.openrouter.utils import parse_sse
 
 
 def _make_sse_lines(chunks: list[dict]) -> list[str]:
-    lines = []
-    for chunk in chunks:
-        lines.append(f"data: {json.dumps(chunk)}")
+    lines = [f"data: {json.dumps(chunk)}" for chunk in chunks]
     lines.append("data: [DONE]")
     return lines
 
 
-async def _async_iter(items):
+async def _async_iter(items):  # noqa: RUF029
     for item in items:
         yield item
 
@@ -59,9 +57,7 @@ class TestUsageCapture:
         mock_response = MagicMock()
         mock_response.aiter_lines = MagicMock(return_value=_async_iter(lines))
 
-        deltas: list[StreamDelta] = []
-        async for delta in parse_sse(mock_response):
-            deltas.append(delta)
+        deltas = [d async for d in parse_sse(mock_response)]
 
         # The last delta should carry the usage
         usage_deltas = [d for d in deltas if d.usage is not None]
@@ -82,7 +78,8 @@ class TestUsageCapture:
         deltas = [d async for d in parse_sse(mock_response)]
         usage_deltas = [d for d in deltas if d.usage is not None]
         assert len(usage_deltas) == 1
-        assert usage_deltas[0].usage.cost == 0.0042
+        assert usage_deltas[0].usage.cost is not None
+        assert math.isclose(usage_deltas[0].usage.cost, 0.0042)
 
     async def test_no_usage_when_not_provided(self):
         lines = _make_sse_lines([
@@ -112,7 +109,10 @@ class TestUsageCapture:
         """When tool calls are made, usage should still be captured."""
         tc_chunk = {
             "choices": [{
-                "delta": {"tool_calls": [{"index": 0, "id": "call_1", "function": {"name": "web_search", "arguments": '{"q":"test"}'}}]},
+                "delta": {"tool_calls": [{
+                    "index": 0, "id": "call_1",
+                    "function": {"name": "web_search", "arguments": '{"q":"test"}'},
+                }]},
                 "finish_reason": None,
             }],
         }

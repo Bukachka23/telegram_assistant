@@ -53,7 +53,7 @@ class MetricsService:
         return f"📊 No requests recorded in the last {days} days."
 
     @classmethod
-    def _format_model(cls, row: Any) -> str:
+    def _format_model(cls, row: Any) -> str:  # noqa: ANN401
         """Format a single model's aggregated stats."""
         model = row["model"]
         requests = row["requests"]
@@ -100,5 +100,5 @@ class MetricsService:
                     counter[stripped] += 1
         if not counter:
             return ""
-        parts = [f"{name} ×{count}" for name, count in counter.most_common()]
+        parts = [f"{name} x{count}" for name, count in counter.most_common()]
         return f"\n🔧 Tools: {' · '.join(parts)}"

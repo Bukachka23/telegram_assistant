@@ -20,6 +20,7 @@ class HealthReport:
     tavily_available: bool
     deep_research_available: bool
     telegraph_available: bool = False
+    request_count: int = 0
     errors: list[str] = field(default_factory=list)
 
     def format_telegram(self) -> str:
@@ -42,6 +43,7 @@ class HealthReport:
             f"  📡 Monitors: {self.monitor_count}",
             f"  📓 Vault notes: {self.vault_note_count}",
             f"  📁 Vault path: `{self.vault_path}`",
+            f"  📊 Tracked requests: {self.request_count}",
         ]
 
         if self.errors:

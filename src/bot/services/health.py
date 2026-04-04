@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from bot.domain.models.health import HealthReport
 
 if TYPE_CHECKING:
+    from bot.infrastructure.storage.metrics_storage import MetricsStore
     from bot.infrastructure.storage.monitor_storage import MonitorStore
     from bot.services.conversation import ConversationManager
     from bot.services.memory import MemoryStore
@@ -34,6 +35,7 @@ class HealthService:
         self._tavily_available = False
         self._deep_research_available = False
         self._telegraph_available = False
+        self._metrics_store: MetricsStore | None = None
         self._owner_user_id: int = 0
 
     def set_memory_store(self, store: MemoryStore) -> None:
@@ -60,6 +62,9 @@ class HealthService:
     def set_telegraph_available(self, *, available: bool) -> None:
         self._telegraph_available = available
 
+    def set_metrics_store(self, store: MetricsStore) -> None:
+        self._metrics_store = store
+
     def set_owner_user_id(self, owner_id: int) -> None:
         self._owner_user_id = owner_id
 
@@ -69,6 +74,7 @@ class HealthService:
         memory_count = await self._safe_memory_count(errors)
         monitor_count = await self._safe_monitor_count(errors)
         vault_note_count = await self._safe_vault_count(errors)
+        request_count = await self._safe_request_count(errors)
         live_model = (
             self._conversations.get_model(self._owner_user_id)
             if self._conversations and self._owner_user_id
@@ -88,6 +94,7 @@ class HealthService:
             tavily_available=self._tavily_available,
             deep_research_available=self._deep_research_available,
             telegraph_available=self._telegraph_available,
+            request_count=request_count,
             errors=errors,
         )
 
@@ -118,4 +125,13 @@ class HealthService:
             return await self._vault_service.count_notes()
         except Exception as exc:  # noqa: BLE001
             errors.append(f"Vault: {exc}")
+            return 0
+
+    async def _safe_request_count(self, errors: list[str]) -> int:
+        if self._metrics_store is None:
+            return 0
+        try:
+            return await self._metrics_store.count()
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"Metrics store: {exc}")
             return 0

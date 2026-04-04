@@ -1,16 +1,21 @@
 import asyncio
 import json
 import logging
+import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from bot.config.constants import ASYNC_TOOL_PREFIX, MAX_TOKENS, MAX_TOOL_ROUNDS, TEMPERATURE
-from bot.domain.models import AgentProfile, Message, Role, ToolCall, ToolResult
+from bot.domain.models import AgentProfile, Message, Role, TokenUsage, ToolCall, ToolResult
+from bot.domain.models.metrics import RequestMetric
 from bot.infrastructure.openrouter.openrouter import OpenRouterClient
 from bot.services.conversation import ConversationManager
 from bot.shared.agents.registry import get_agent, get_default_agent
 from bot.tools.registry import ToolRegistry
+
+if TYPE_CHECKING:
+    from bot.infrastructure.storage.metrics_storage import MetricsStore
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +34,7 @@ class LLMService:
             max_tokens: int = MAX_TOKENS,
             temperature: float = TEMPERATURE,
             tz_offset_hours: int = 0,
+            metrics_store: "MetricsStore | None" = None,
     ) -> None:
         self._client = client
         self._conversations = conversations
@@ -38,6 +44,7 @@ class LLMService:
         self._tz = timezone(timedelta(hours=tz_offset_hours))
         self._async_executors: dict[str, AsyncToolExecutor] = {}
         self._filtered_schema_cache: dict[tuple[str, ...], list[dict]] = {}
+        self._metrics_store = metrics_store
 
     def register_async_tool(self, name: str, executor: AsyncToolExecutor) -> None:
         """Register an async executor for tools that need await."""
@@ -51,6 +58,12 @@ class LLMService:
         model = self._conversations.get_model(user_id)
         tools_schema = self._filter_tools_schema(agent.allowed_tools)
         system_prompt = self._build_system_prompt(agent.prompt)
+
+        t_start = time.monotonic()
+        t_first_token: float | None = None
+        last_usage: TokenUsage | None = None
+        tool_names_collected: list[str] = []
+        error_text = ""
 
         for _ in range(MAX_TOOL_ROUNDS):
             messages = self._conversations.get_messages_for_api(
@@ -67,17 +80,33 @@ class LLMService:
                     max_tokens=agent.max_tokens,
             ):
                 if delta.text:
+                    if t_first_token is None:
+                        t_first_token = time.monotonic()
                     text_parts.append(delta.text)
                     yield delta.text
                 if delta.tool_calls:
                     tool_calls.extend(delta.tool_calls)
+                if delta.usage:
+                    last_usage = delta.usage
+
+            if tool_calls:
+                tool_names_collected.extend(tc.name for tc in tool_calls)
 
             should_continue = await self._process_stream_results(
                 user_id, text_parts, tool_calls, agent.allowed_tools
             )
             if not should_continue:
+                await self._emit_metric(
+                    model=model, t_start=t_start, t_first_token=t_first_token,
+                    usage=last_usage, tool_names=tool_names_collected, error_text=error_text,
+                )
                 return
 
+        error_text = "max tool rounds exceeded"
+        await self._emit_metric(
+            model=model, t_start=t_start, t_first_token=t_first_token,
+            usage=last_usage, tool_names=tool_names_collected, error_text=error_text,
+        )
         logger.error("Max tool rounds (%d) exceeded for user %d", MAX_TOOL_ROUNDS, user_id)
         yield "⚠️ Reached maximum tool call depth. Please try a simpler request."
 
@@ -273,6 +302,36 @@ class LLMService:
             }
             for tc in tool_calls
         ]
+
+    async def _emit_metric(
+        self,
+        *,
+        model: str,
+        t_start: float,
+        t_first_token: float | None,
+        usage: TokenUsage | None,
+        tool_names: list[str],
+        error_text: str,
+    ) -> None:
+        """Record a request metric. Fire-and-forget — never breaks a response."""
+        if self._metrics_store is None:
+            return
+        try:
+            t_end = time.monotonic()
+            metric = RequestMetric(
+                model=model,
+                tokens_in=usage.prompt_tokens if usage else 0,
+                tokens_out=usage.completion_tokens if usage else 0,
+                cost_usd=usage.cost if usage else None,
+                latency_ms=int((t_end - t_start) * 1000),
+                ttfb_ms=int((t_first_token - t_start) * 1000) if t_first_token else 0,
+                tool_names=",".join(tool_names),
+                is_error=bool(error_text),
+                error_text=error_text,
+            )
+            await self._metrics_store.record(metric)
+        except Exception:
+            logger.warning("Failed to emit request metric", exc_info=True)
 
     def _record_tool_result(self, user_id: int, result: ToolResult) -> None:
         self._conversations.add_message(

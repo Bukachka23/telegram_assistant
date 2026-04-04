@@ -105,7 +105,7 @@ class MetricsStore:
                 datetime.now(UTC).isoformat(),
             ))
             await db.commit()
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning("Failed to record metric", exc_info=True)
 
     async def query(self, days: int = 7) -> list[aiosqlite.Row]:

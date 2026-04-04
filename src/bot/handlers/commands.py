@@ -17,6 +17,7 @@ from bot.domain.models import ForwardedChatLike, MonitorDisplay
 from bot.domain.protocols import DeepResearchServiceProtocol, MonitorServiceProtocol
 from bot.services.conversation import ConversationManager
 from bot.services.formatting import split_for_telegram
+from bot.services.metrics import MetricsService
 from bot.services.telegraph import TelegraphPublishService
 from bot.shared.agents.registry import (
     get_agent,
@@ -76,6 +77,26 @@ def _parse_monitor_keywords(raw_keywords: str) -> list[str]:
 def _monitor_identifier_text(monitor: MonitorDisplay) -> str:
     """Build a stable display identifier for a monitor."""
     return monitor.username or f"id:{monitor.chat_id}"
+
+
+def _parse_stats_days(text: str | None) -> int | None:
+    """Parse /stats argument into days. Returns None on invalid input."""
+    if not text:
+        return 7
+    args = text.split(maxsplit=1)
+    if len(args) == 1:
+        return 7
+    arg = args[1].strip().lower()
+    if arg == "today":
+        return 1
+    if arg == "all":
+        return 0
+    try:
+        days = int(arg)
+    except ValueError:
+        return None
+    else:
+        return max(days, 0)
 
 
 def _extract_forwarded_chat(message: Message) -> ForwardedChatLike | None:
@@ -185,6 +206,7 @@ def setup_commands(  # noqa: PLR0915
     deep_research: DeepResearchServiceProtocol | None = None,
     health: "HealthService | None" = None,
     telegraph: TelegraphPublishService | None = None,
+    metrics: MetricsService | None = None,
 ) -> Router:
     """Configure command handlers with dependencies."""
     router = Router(name="commands")
@@ -201,6 +223,7 @@ def setup_commands(  # noqa: PLR0915
             "`/model` — show or switch LLM model\n"
             "`/deep <question>` — run multi-cycle deep research\n"
             "`/telegraph` — toggle Telegra.ph publishing for long responses\n"
+            "`/stats` — model usage, cost, and latency statistics\n"
             "`/status` — system health check\n"
             "`/monitor` — list active monitors\n"
             "`/monitor add @channel kw1, kw2` — monitor a public channel\n"
@@ -278,6 +301,20 @@ def setup_commands(  # noqa: PLR0915
         icon = "✅" if new_state else "❌"
         label = "enabled" if new_state else "disabled"
         await message.answer(f"{icon} Telegra.ph publishing **{label}**", parse_mode="Markdown")
+
+    @router.message(Command("stats"))
+    async def cmd_stats(message: Message) -> None:
+        if not message.from_user:
+            return
+        if metrics is None:
+            await message.answer("⚠️ Metrics are not available.")
+            return
+        days = _parse_stats_days(message.text)
+        if days is None:
+            await message.answer("Usage: `/stats` `/stats 30` `/stats today` `/stats all`", parse_mode="Markdown")
+            return
+        text = await metrics.build_stats(days=days)
+        await message.answer(text, parse_mode="Markdown")
 
     @router.message(Command("status"))
     async def cmd_status(message: Message) -> None:
