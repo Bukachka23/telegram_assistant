@@ -2,8 +2,8 @@ import logging
 
 import httpx
 
+from bot.config.constants import DEFAULT_MAX_RESULTS, REQUEST_TIMEOUT, TAVILY_SEARCH_URL
 from bot.domain.exceptions import WebSearchError
-from bot.shared.constants import DEFAULT_MAX_RESULTS, REQUEST_TIMEOUT, TAVILY_SEARCH_URL
 
 logger = logging.getLogger(__name__)
 

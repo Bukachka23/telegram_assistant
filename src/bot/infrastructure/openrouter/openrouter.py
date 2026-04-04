@@ -3,10 +3,10 @@ from collections.abc import AsyncIterator
 
 import httpx
 
+from bot.config.constants import BASE_URL, OPENROUTER_MAX_TOKENS, TIMEOUT
 from bot.domain.exceptions import LLMError
 from bot.domain.models import StreamDelta
-from bot.infrastructure.open_router.utils import build_payload, check_response_status, parse_sse
-from bot.shared.constants import BASE_URL, OPENROUTER_MAX_TOKENS, TIMEOUT
+from bot.infrastructure.openrouter.utils import build_payload, check_response_status, parse_sse
 
 logger = logging.getLogger(__name__)
 
