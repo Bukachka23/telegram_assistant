@@ -1,11 +1,15 @@
-"""Obsidian vault tools for LLM function calling."""
+from collections.abc import Awaitable, Callable
 
+from bot.config.constants import ASYNC_TOOL_PREFIX
 from bot.services.vault import VaultService
 from bot.tools.registry import ToolRegistry
 
+AsyncToolExecutor = Callable[..., Awaitable[str]]
 
-def register_vault_tools(registry: ToolRegistry, vault: VaultService) -> None:
-    """Register all vault tools with the registry."""
+
+def register_vault_tools(registry: ToolRegistry) -> None:
+    """Register all vault tool schemas with the registry."""
+    async_ = lambda **_kw: ASYNC_TOOL_PREFIX  # noqa: E731
 
     registry.register(
         name="search_vault",
@@ -27,7 +31,7 @@ def register_vault_tools(registry: ToolRegistry, vault: VaultService) -> None:
             },
             "required": ["query"],
         },
-        fn=lambda query, max_results=10: _search(vault, query, max_results),
+        fn=async_,
     )
 
     registry.register(
@@ -43,23 +47,46 @@ def register_vault_tools(registry: ToolRegistry, vault: VaultService) -> None:
             },
             "required": ["path"],
         },
-        fn=lambda path: vault.read(path).content,
+        fn=async_,
     )
 
     registry.register(
-        name="list_notes",
-        description="List all markdown files in a vault folder.",
+        name="list_vault_folders",
+        description=(
+            "List all immediate subdirectories inside a vault folder. "
+            "Call with no arguments to see the top-level vault structure "
+            "and discover available folder names before calling list_notes."
+        ),
         parameters={
             "type": "object",
             "properties": {
                 "folder": {
                     "type": "string",
-                    "description": "Folder path (empty for default folder)",
+                    "description": "Folder to inspect (empty = vault root)",
                 },
             },
             "required": [],
         },
-        fn=lambda folder="": "\n".join(vault.list_notes(folder)),
+        fn=async_,
+    )
+
+    registry.register(
+        name="list_notes",
+        description=(
+            "List all markdown notes inside a vault folder. "
+            "Use list_vault_folders first if you are unsure of the exact folder name."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "folder": {
+                    "type": "string",
+                    "description": "Exact folder path as returned by list_vault_folders",
+                },
+            },
+            "required": ["folder"],
+        },
+        fn=async_,
     )
 
     registry.register(
@@ -79,7 +106,7 @@ def register_vault_tools(registry: ToolRegistry, vault: VaultService) -> None:
             },
             "required": ["path", "content"],
         },
-        fn=lambda path, content: f"Created: {vault.create(path, content).path}",
+        fn=async_,
     )
 
     registry.register(
@@ -99,16 +126,49 @@ def register_vault_tools(registry: ToolRegistry, vault: VaultService) -> None:
             },
             "required": ["path", "content"],
         },
-        fn=lambda path, content: f"Appended to: {vault.append(path, content).path}",
+        fn=async_,
     )
 
 
-def _search(vault: VaultService, query: str, max_results: int) -> str:
-    """Format search results as a readable string."""
-    notes = vault.search(query, max_results=max_results)
-    if not notes:
-        return f"No notes found matching '{query}'"
-    lines = [f"Found {len(notes)} note(s):"]
-    for note in notes:
-        lines.append(f"\n📄 {note.path}\n{note.content}")
-    return "\n".join(lines)
+def build_vault_async_tools(vault: VaultService) -> dict[str, AsyncToolExecutor]:
+    """Build async executor functions for all vault tools."""
+
+    async def search_vault(query: str, max_results: int = 10) -> str:
+        notes = await vault.search(query, max_results=max_results)
+        if not notes:
+            return f"No notes found matching '{query}'"
+        lines = [f"Found {len(notes)} note(s):"]
+        lines.extend(f"\n📄 {note.path}\n{note.content}" for note in notes)
+        return "\n".join(lines)
+
+    async def read_note(path: str) -> str:
+        note = await vault.read(path)
+        return note.content
+
+    async def list_vault_folders(folder: str = "") -> str:
+        folders = await vault.list_folders(folder=folder)
+        if not folders:
+            return "No subfolders found" + (f" in '{folder}'" if folder else " in vault root")
+        header = f"Folders in '{folder}':" if folder else "Top-level vault folders:"
+        return header + "\n" + "\n".join(f"  📁 {f}" for f in folders)
+
+    async def list_notes(folder: str = "") -> str:
+        notes = await vault.list_notes(folder=folder)
+        return "\n".join(notes)
+
+    async def create_note(path: str, content: str) -> str:
+        note = await vault.create(path, content)
+        return f"Created: {note.path}"
+
+    async def append_note(path: str, content: str) -> str:
+        note = await vault.append(path, content)
+        return f"Appended to: {note.path}"
+
+    return {
+        "search_vault": search_vault,
+        "read_note": read_note,
+        "list_vault_folders": list_vault_folders,
+        "list_notes": list_notes,
+        "create_note": create_note,
+        "append_note": append_note,
+    }

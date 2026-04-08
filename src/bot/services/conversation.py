@@ -1,18 +1,11 @@
-"""Session-based conversation memory management."""
-
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
+from bot.config.constants import MAX_HISTORY, SESSION_TIMEOUT_MINUTES
 from bot.domain.models import Conversation, Message, Role
+from bot.config.agents import get_default_agent
 
 logger = logging.getLogger(__name__)
-
-_SYSTEM_PROMPT = (
-    "You are a helpful personal assistant in Telegram. "
-    "You have access to tools for searching and managing an Obsidian vault, "
-    "and for querying Telegram channels. Use tools when the user's request "
-    "requires accessing their notes or channel data. Be concise."
-)
 
 
 class ConversationManager:
@@ -21,8 +14,9 @@ class ConversationManager:
     def __init__(
         self,
         default_model: str,
-        session_timeout_minutes: int = 30,
-        max_history: int = 50,
+        *,
+        session_timeout_minutes: int = SESSION_TIMEOUT_MINUTES,
+        max_history: int = MAX_HISTORY,
     ) -> None:
         self._sessions: dict[int, Conversation] = {}
         self._default_model = default_model
@@ -32,7 +26,7 @@ class ConversationManager:
     def get_or_create(self, user_id: int) -> Conversation:
         """Get existing session or create a new one. Expired sessions reset."""
         session = self._sessions.get(user_id)
-        if session and (datetime.now() - session.last_active) < self._timeout:
+        if session and (datetime.now(UTC) - session.last_active) < self._timeout:
             return session
         return self._new_session(user_id)
 
@@ -42,12 +36,20 @@ class ConversationManager:
         session.add(message)
         session.trim(self._max_history)
 
-    def get_messages_for_api(self, user_id: int) -> list[dict]:
+    def get_messages_for_api(
+        self,
+        user_id: int,
+        *,
+        system_prompt: str | None = None,
+    ) -> list[dict]:
         """Return messages formatted for OpenRouter API."""
         session = self.get_or_create(user_id)
         result = []
-        for msg in session.messages:
-            entry: dict = {"role": msg.role.value, "content": msg.content}
+        for index, msg in enumerate(session.messages):
+            content = msg.content
+            if index == 0 and msg.role == Role.SYSTEM and system_prompt is not None:
+                content = system_prompt
+            entry: dict = {"role": msg.role.value, "content": content}
             if msg.tool_call_id:
                 entry["tool_call_id"] = msg.tool_call_id
             if msg.tool_calls:
@@ -63,13 +65,36 @@ class ConversationManager:
         """Switch the model for a user's session."""
         self.get_or_create(user_id).model = model
 
+    def get_active_agent(self, user_id: int) -> str:
+        """Return the active agent name for a user's session."""
+        return self.get_or_create(user_id).active_agent
+
+    def set_active_agent(self, user_id: int, agent_name: str) -> None:
+        """Switch the active agent for a user's session."""
+        self.get_or_create(user_id).active_agent = agent_name
+
+    def is_telegraph_enabled(self, user_id: int) -> bool:
+        """Return whether Telegraph publishing is enabled for this session."""
+        return self.get_or_create(user_id).telegraph_enabled
+
+    def toggle_telegraph(self, user_id: int) -> bool:
+        """Toggle Telegraph publishing for a user's session. Returns the new state."""
+        session = self.get_or_create(user_id)
+        session.telegraph_enabled = not session.telegraph_enabled
+        return session.telegraph_enabled
+
     def clear(self, user_id: int) -> None:
         """Clear a user's conversation history."""
         self._sessions.pop(user_id, None)
 
     def _new_session(self, user_id: int) -> Conversation:
-        """Create and store a fresh session with system prompt."""
-        session = Conversation(user_id=user_id, model=self._default_model)
-        session.add(Message(role=Role.SYSTEM, content=_SYSTEM_PROMPT))
+        """Create and store a fresh session with the default agent prompts."""
+        default_agent = get_default_agent()
+        session = Conversation(
+            user_id=user_id,
+            model=self._default_model,
+            active_agent=default_agent.name,
+        )
+        session.add(Message(role=Role.SYSTEM, content=default_agent.prompt))
         self._sessions[user_id] = session
         return session

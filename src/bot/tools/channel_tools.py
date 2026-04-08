@@ -1,19 +1,9 @@
-"""Channel query tools for LLM function calling.
-
-These tools are async (Telethon) but the registry expects sync callables.
-They are registered as thin wrappers that are invoked via the async LLM service.
-"""
-
+from bot.config.constants import ASYNC_TOOL_PREFIX
 from bot.tools.registry import ToolRegistry
 
 
 def register_channel_tools(registry: ToolRegistry) -> None:
-    """Register channel tool schemas only.
-
-    The actual execution is handled by ChannelService (async),
-    so we register placeholders that the LLM service routes manually.
-    """
-
+    """Register channel tool schemas only."""
     registry.register(
         name="fetch_messages",
         description=(
@@ -38,7 +28,7 @@ def register_channel_tools(registry: ToolRegistry) -> None:
             },
             "required": ["channel"],
         },
-        fn=lambda **_: "ASYNC_TOOL:fetch_messages",
+        fn=lambda **_: f"{ASYNC_TOOL_PREFIX}fetch_messages",
     )
 
     registry.register(
@@ -69,5 +59,5 @@ def register_channel_tools(registry: ToolRegistry) -> None:
             },
             "required": ["channel", "query"],
         },
-        fn=lambda **_: "ASYNC_TOOL:search_channel",
+        fn=lambda **_: f"{ASYNC_TOOL_PREFIX}search_channel",
     )

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from bot.config import Settings, load_settings
+from bot.config.config import Settings, load_settings
 
 
 class TestSettings:

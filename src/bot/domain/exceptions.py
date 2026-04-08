@@ -1,6 +1,3 @@
-"""Domain-specific exceptions."""
-
-
 class BotError(Exception):
     """Base exception for all bot errors."""
 
@@ -15,3 +12,11 @@ class LLMError(BotError):
 
 class ChannelError(BotError):
     """Raised when channel operations fail."""
+
+
+class WebSearchError(BotError):
+    """Raised when web search API calls fail."""
+
+
+class TelegraphError(BotError):
+    """Raised when Telegraph API operations fail."""

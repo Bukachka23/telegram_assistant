@@ -15,7 +15,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from bot.config import load_settings
+from bot.config.config import load_settings
 
 
 async def main() -> None:
@@ -45,13 +45,15 @@ async def main() -> None:
     print("A code will be sent to your Telegram app.")
     print("Check 'Telegram' service messages.\n")
 
-    await client.start()
+    await client.start()  # type: ignore
 
     me = await client.get_me()
-    print(f"\n✅ Authenticated as: {me.first_name} (ID: {me.id})")
+    first_name = getattr(me, "first_name", "Unknown")
+    user_id = getattr(me, "id", "?")
+    print(f"\n✅ Authenticated as: {first_name} (ID: {user_id})")
     print(f"📁 Session saved to: {session_path}.session")
     print(
-        f"\n💡 Set OWNER_USER_ID={me.id} in your .env"
+        f"\n💡 Set OWNER_USER_ID={user_id} in your .env"
         " if not already set."
     )
 
