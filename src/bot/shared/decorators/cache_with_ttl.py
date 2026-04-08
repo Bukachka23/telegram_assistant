@@ -2,7 +2,7 @@ import functools
 import time
 from collections.abc import Awaitable, Callable, Hashable, Mapping
 
-from bot.config.constants import P, R
+from bot.shared.types import P, R
 
 CacheKey = tuple[tuple[Hashable, ...], tuple[tuple[str, Hashable], ...]]
 

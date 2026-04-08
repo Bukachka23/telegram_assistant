@@ -31,10 +31,7 @@ class ToolRegistry:
             return f"Error: {e}"
 
     def to_openrouter_schema(self) -> list[dict]:
-        """Export all tools as OpenRouter function calling schema.
-
-        The result is cached and only rebuilt when tools are registered.
-        """
+        """Export all tools as OpenRouter function calling schema."""
         if self._schema_cache is None:
             self._schema_cache = [
                 {

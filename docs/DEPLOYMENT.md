@@ -45,7 +45,7 @@ Or copy from your MacBook via SCP:
 
 ```bash
 # From your MacBook
-scp -r /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT pi@<PI_IP>:~/telegram-assistant
+scp -r /Users/bukachiyboss/Documents/PROJECTS/TELEGRAM_ASSISTANT .pi@<PI_IP>:~/telegram-assistant
 ```
 
 ---
@@ -95,7 +95,7 @@ llm:
   default_model: "anthropic/claude-sonnet-4"  # your preferred model
 
 vault:
-  path: "/home/pi/obsidian-vault"  # path on Pi (overridden by Docker)
+  path: "/home/.pi/obsidian-vault"  # path on Pi (overridden by Docker)
   default_folder: "notes"
 
 streaming:
@@ -118,7 +118,7 @@ sudo systemctl start syncthing@$USER
 
 # Access web UI at http://<PI_IP>:8384
 # Add your MacBook's vault folder as a shared folder
-# Default sync path: /home/pi/obsidian-vault
+# Default sync path: /home/.pi/obsidian-vault
 ```
 
 ---

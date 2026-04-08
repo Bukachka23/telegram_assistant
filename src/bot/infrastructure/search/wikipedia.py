@@ -3,7 +3,9 @@ import re
 
 import httpx
 
-from bot.config.constants import DEFAULT_MAX_RESULTS, REQUEST_TIMEOUT, WIKIPEDIA_API, WIKIPEDIA_USER_AGENT
+from bot.config.constants import DEFAULT_MAX_RESULTS, REQUEST_TIMEOUT
+from bot.domain.protocols import SearchClientProtocol
+from bot.infrastructure.search.configs import WIKIPEDIA_API, WIKIPEDIA_USER_AGENT
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +17,7 @@ _UNAVAILABLE_MSG = (
 )
 
 
-class WikipediaSearchClient:
+class WikipediaSearchClient(SearchClientProtocol):
     """Async client for the English Wikipedia search API."""
 
     def __init__(self, *, timeout: float = REQUEST_TIMEOUT) -> None:

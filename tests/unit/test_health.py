@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from bot.services.health import HealthReport, HealthService
+from bot.services.health_formatter import format_health_report
 
 
 @pytest.fixture
@@ -31,7 +32,7 @@ class TestHealthReport:
             tavily_available=True,
             deep_research_available=True,
         )
-        text = report.format_telegram()
+        text = format_health_report(report)
 
         assert "System Status" in text
         assert "3h 42m" in text
@@ -59,7 +60,7 @@ class TestHealthReport:
             deep_research_available=True,
             errors=["Memory store: connection failed"],
         )
-        text = report.format_telegram()
+        text = format_health_report(report)
 
         assert "❌ Telethon" in text
         assert "❌ Web search" in text
@@ -80,7 +81,7 @@ class TestHealthReport:
             tavily_available=False,
             deep_research_available=False,
         )
-        text = report.format_telegram()
+        text = format_health_report(report)
         assert "2d 5h" in text
 
 

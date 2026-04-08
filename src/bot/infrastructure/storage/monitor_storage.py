@@ -5,8 +5,8 @@ from pathlib import Path
 
 import aiosqlite
 
-from bot.config.constants import SCHEMA
 from bot.domain.models import PersistedMonitor
+from bot.infrastructure.storage.schemas import MONITOR_SCHEMA
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class MonitorStore:
             self._db = await aiosqlite.connect(db_path)
             self._db.row_factory = aiosqlite.Row
         db = self._get_db()
-        await db.executescript(SCHEMA)
+        await db.executescript(MONITOR_SCHEMA)
         await db.commit()
         logger.info("Monitor store ready: %s", self._db_path)
 

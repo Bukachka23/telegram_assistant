@@ -1,13 +1,13 @@
 import logging
 
-from bot.domain.models import ForwardedChat, PersistedMonitor
-from bot.domain.protocols import SupportsGetEntity
+from bot.domain.models import PersistedMonitor
+from bot.domain.protocols import ForwardedChatLike, MonitorServiceProtocol, SupportsGetEntity
 from bot.infrastructure.storage.monitor_storage import MonitorStore
 
 logger = logging.getLogger(__name__)
 
 
-class MonitorService:
+class MonitorService(MonitorServiceProtocol):
     """Orchestrates public and private monitor setup on top of MonitorStore."""
 
     def __init__(self, store: MonitorStore, client: SupportsGetEntity | None) -> None:
@@ -46,7 +46,7 @@ class MonitorService:
         self._invalidate_monitors_cache()
         return monitor
 
-    async def add_forwarded_monitor(self, *, owner_user_id: int, forwarded_chat: ForwardedChat) -> PersistedMonitor:
+    async def add_forwarded_monitor(self, *, owner_user_id: int, forwarded_chat: ForwardedChatLike) -> PersistedMonitor:
         """Persist a monitor from a forwarded channel/chat object."""
         if not self.has_pending_add(owner_user_id):
             msg = "no pending private monitor setup for this user"

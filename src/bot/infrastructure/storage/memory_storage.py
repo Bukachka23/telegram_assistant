@@ -4,7 +4,7 @@ from pathlib import Path
 
 import aiosqlite
 
-from bot.config.constants import SCHEMA
+from bot.infrastructure.storage.schemas import MEMORY_SCHEMA
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class MemoryStore:
             self._db = await aiosqlite.connect(db_path)
             self._db.row_factory = aiosqlite.Row
         db = self._get_db()
-        await db.executescript(SCHEMA)
+        await db.executescript(MEMORY_SCHEMA)
         await db.commit()
         count = await self.count()
         logger.info("Memory store ready: %d memories in %s", count, self._db_path)

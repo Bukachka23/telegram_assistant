@@ -1,17 +1,17 @@
-import asyncio
-import json
 import logging
 import time
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
-from bot.config.constants import ASYNC_TOOL_PREFIX, MAX_TOKENS, MAX_TOOL_ROUNDS, TEMPERATURE
+from bot.config.agents import get_agent, get_default_agent
+from bot.config.constants import MAX_TOKENS, MAX_TOOL_ROUNDS, TEMPERATURE
 from bot.domain.models import AgentProfile, Message, Role, TokenUsage, ToolCall, ToolResult
-from bot.domain.models.metrics import RequestMetric
+from bot.domain.protocols import LLMServiceProtocol
 from bot.infrastructure.openrouter.openrouter import OpenRouterClient
 from bot.services.conversation import ConversationManager
-from bot.shared.agents.registry import get_agent, get_default_agent
+from bot.services.llm_metrics import LLMRequestMetricsEmitter
+from bot.services.tool_executor import AsyncToolExecutor, ToolExecutionService
 from bot.tools.registry import ToolRegistry
 
 if TYPE_CHECKING:
@@ -19,22 +19,20 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-AsyncToolExecutor = Callable[..., Awaitable[str]]
 
-
-class LLMService:
+class LLMService(LLMServiceProtocol):
     """Orchestrates LLM calls with tool execution and streaming."""
 
     def __init__(
-            self,
-            client: OpenRouterClient,
-            conversations: ConversationManager,
-            registry: ToolRegistry,
-            *,
-            max_tokens: int = MAX_TOKENS,
-            temperature: float = TEMPERATURE,
-            tz_offset_hours: int = 0,
-            metrics_store: "MetricsStore | None" = None,
+        self,
+        client: OpenRouterClient,
+        conversations: ConversationManager,
+        registry: ToolRegistry,
+        *,
+        max_tokens: int = MAX_TOKENS,
+        temperature: float = TEMPERATURE,
+        tz_offset_hours: int = 0,
+        metrics_store: "MetricsStore | None" = None,
     ) -> None:
         self._client = client
         self._conversations = conversations
@@ -42,13 +40,13 @@ class LLMService:
         self._max_tokens = max_tokens
         self._temperature = temperature
         self._tz = timezone(timedelta(hours=tz_offset_hours))
-        self._async_executors: dict[str, AsyncToolExecutor] = {}
+        self._tool_executor = ToolExecutionService(registry)
         self._filtered_schema_cache: dict[tuple[str, ...], list[dict]] = {}
-        self._metrics_store = metrics_store
+        self._metrics_emitter = LLMRequestMetricsEmitter(metrics_store)
 
     def register_async_tool(self, name: str, executor: AsyncToolExecutor) -> None:
         """Register an async executor for tools that need await."""
-        self._async_executors[name] = executor
+        self._tool_executor.register_async_tool(name, executor)
 
     async def stream_response(self, user_id: int, user_text: str) -> AsyncIterator[str]:
         """Process a user message and yield streaming text chunks."""
@@ -67,17 +65,18 @@ class LLMService:
 
         for _ in range(MAX_TOOL_ROUNDS):
             messages = self._conversations.get_messages_for_api(
-                user_id, system_prompt=system_prompt
+                user_id,
+                system_prompt=system_prompt,
             )
             text_parts: list[str] = []
             tool_calls: list[ToolCall] = []
 
             async for delta in self._client.stream_completion(
-                    messages=messages,
-                    model=model,
-                    tools=tools_schema,
-                    temperature=agent.temperature,
-                    max_tokens=agent.max_tokens,
+                messages=messages,
+                model=model,
+                tools=tools_schema,
+                temperature=agent.temperature,
+                max_tokens=agent.max_tokens,
             ):
                 if delta.text:
                     if t_first_token is None:
@@ -93,31 +92,42 @@ class LLMService:
                 tool_names_collected.extend(tc.name for tc in tool_calls)
 
             should_continue = await self._process_stream_results(
-                user_id, text_parts, tool_calls, agent.allowed_tools
+                user_id,
+                text_parts,
+                tool_calls,
+                agent.allowed_tools,
             )
             if not should_continue:
-                await self._emit_metric(
-                    model=model, t_start=t_start, t_first_token=t_first_token,
-                    usage=last_usage, tool_names=tool_names_collected, error_text=error_text,
+                await self._metrics_emitter.emit(
+                    model=model,
+                    t_start=t_start,
+                    t_first_token=t_first_token,
+                    usage=last_usage,
+                    tool_names=tool_names_collected,
+                    error_text=error_text,
                 )
                 return
 
         error_text = "max tool rounds exceeded"
-        await self._emit_metric(
-            model=model, t_start=t_start, t_first_token=t_first_token,
-            usage=last_usage, tool_names=tool_names_collected, error_text=error_text,
+        await self._metrics_emitter.emit(
+            model=model,
+            t_start=t_start,
+            t_first_token=t_first_token,
+            usage=last_usage,
+            tool_names=tool_names_collected,
+            error_text=error_text,
         )
         logger.error("Max tool rounds (%d) exceeded for user %d", MAX_TOOL_ROUNDS, user_id)
         yield "⚠️ Reached maximum tool call depth. Please try a simpler request."
 
     async def complete_side_context(
-            self,
-            *,
-            messages: list[dict[str, Any]],
-            model: str,
-            allowed_tools: list[str] | None = None,
-            temperature: float | None = None,
-            max_tokens: int | None = None,
+        self,
+        *,
+        messages: list[dict[str, Any]],
+        model: str,
+        allowed_tools: list[str] | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         """Run the same tool loop against an isolated message context."""
         tools_schema = self._filter_tools_schema(allowed_tools)
@@ -127,7 +137,11 @@ class LLMService:
 
         for _ in range(MAX_TOOL_ROUNDS):
             text, tool_calls = await self._fetch_completion(
-                working_messages, model, tools_schema, effective_temp, effective_tokens
+                working_messages,
+                model,
+                tools_schema,
+                effective_temp,
+                effective_tokens,
             )
 
             if text:
@@ -144,7 +158,11 @@ class LLMService:
         return "⚠️ Reached maximum tool call depth. Please try a narrower research request."
 
     async def _process_stream_results(
-            self, user_id: int, text_parts: list[str], tool_calls: list[ToolCall], allowed_tools: list[str]
+        self,
+        user_id: int,
+        text_parts: list[str],
+        tool_calls: list[ToolCall],
+        allowed_tools: list[str],
     ) -> bool:
         """Evaluate the results of a streaming round."""
         if text_parts:
@@ -159,14 +177,23 @@ class LLMService:
         return False
 
     async def _fetch_completion(
-            self, messages: list[dict[str, Any]], model: str, tools: list[dict] | None, temp: float, tokens: int
+        self,
+        messages: list[dict[str, Any]],
+        model: str,
+        tools: list[dict] | None,
+        temp: float,
+        tokens: int,
     ) -> tuple[str, list[ToolCall]]:
         """Fetch a complete response from the LLM, aggregating text and tool calls."""
         text_parts: list[str] = []
         tool_calls: list[ToolCall] = []
 
         async for delta in self._client.stream_completion(
-                messages=messages, model=model, tools=tools, temperature=temp, max_tokens=tokens
+            messages=messages,
+            model=model,
+            tools=tools,
+            temperature=temp,
+            max_tokens=tokens,
         ):
             if delta.text:
                 text_parts.append(delta.text)
@@ -176,85 +203,48 @@ class LLMService:
         return "".join(text_parts), tool_calls
 
     async def _apply_tools_to_context(
-            self, messages: list[dict[str, Any]], tool_calls: list[ToolCall], allowed_tools: list[str] | None
+        self,
+        messages: list[dict[str, Any]],
+        tool_calls: list[ToolCall],
+        allowed_tools: list[str] | None,
     ) -> None:
         """Execute tools and append both the calls and results to the isolated message context."""
+        ordered_calls = tuple(tool_calls)
         messages.append(
             {
                 "role": Role.ASSISTANT.value,
                 "content": "",
-                "tool_calls": self._format_tool_calls(tool_calls),
+                "tool_calls": self._tool_executor.format_tool_calls(list(ordered_calls)),
             }
         )
-        results = await asyncio.gather(
-            *[self._execute_single_tool(tc, allowed_tools=allowed_tools) for tc in tool_calls]
+        results = await self._tool_executor.execute_tools_in_order(
+            ordered_calls,
+            allowed_tools=allowed_tools,
         )
         messages.extend(
-                {
-                    "role": Role.TOOL.value,
-                    "content": result.content,
-                    "tool_call_id": result.tool_call_id,
-                }
-                for result in results
-            )
+            {
+                "role": Role.TOOL.value,
+                "content": result.content,
+                "tool_call_id": result.tool_call_id,
+            }
+            for result in results
+        )
 
-    async def _execute_tool_calls(self, user_id: int, tool_calls: list[ToolCall], *, allowed_tools: list[str]) -> None:
-        self._record_tool_calls_intent(user_id, tool_calls)
-        results = await asyncio.gather(
-            *[self._execute_single_tool(tc, allowed_tools=allowed_tools) for tc in tool_calls]
+    async def _execute_tool_calls(
+        self,
+        user_id: int,
+        tool_calls: list[ToolCall],
+        *,
+        allowed_tools: list[str],
+    ) -> None:
+        ordered_calls = tuple(tool_calls)
+        self._record_tool_calls_intent(user_id, list(ordered_calls))
+        results = await self._tool_executor.execute_tools_in_order(
+            ordered_calls,
+            allowed_tools=allowed_tools,
         )
         for result in results:
             self._record_tool_result(user_id, result)
-
-    async def _execute_single_tool(self, tool_call: ToolCall, *, allowed_tools: list[str] | None = None) -> ToolResult:
-        if allowed_tools is not None and tool_call.name not in allowed_tools:
-            content = f"Error: tool '{tool_call.name}' is not available for the active agent"
-            return ToolResult(tool_call_id=tool_call.id, content=content, is_error=True)
-
-        try:
-            args = self._parse_arguments(tool_call)
-        except ValueError as error:
-            return ToolResult(tool_call_id=tool_call.id, content=f"Error: {error}", is_error=True)
-
-        logger.info("Executing tool: %s(%s)", tool_call.name, args)
-
-        sync_result = self._registry.execute(tool_call.name, args)
-        if sync_result.startswith(ASYNC_TOOL_PREFIX):
-            return await self._execute_async_tool(tool_call, args)
-
-        return ToolResult(tool_call_id=tool_call.id, content=sync_result)
-
-    @staticmethod
-    def _parse_arguments(tool_call: ToolCall) -> dict[str, Any]:
-        try:
-            return json.loads(tool_call.arguments)
-        except json.JSONDecodeError as error:
-            msg = f"invalid tool arguments: {error}"
-            raise ValueError(msg) from error
-
-    async def _execute_async_tool(self, tool_call: ToolCall, args: dict[str, Any]) -> ToolResult:
-        executor = self._async_executors.get(tool_call.name)
-        if not executor:
-            return ToolResult(
-                tool_call_id=tool_call.id,
-                content=f"Error: async tool '{tool_call.name}' not available",
-                is_error=True,
-            )
-
-        try:
-            content = await executor(**args)
-            return ToolResult(tool_call_id=tool_call.id, content=content)
-        except Exception as error:
-            logger.exception("Async tool %s failed", tool_call.name)
-            return ToolResult(
-                tool_call_id=tool_call.id,
-                content=(
-                    f"Tool '{tool_call.name}' failed: {error}. "
-                    "Answer the user's question using your own knowledge. "
-                    "Mention that real-time search was unavailable."
-                ),
-                is_error=True,
-            )
 
     def _build_system_prompt(self, base_prompt: str) -> str:
         """Prepend the current local datetime so the LLM can schedule correctly."""
@@ -275,7 +265,8 @@ class LLMService:
         if cached is not None:
             return cached
         filtered = [
-            tool for tool in self._registry.to_openrouter_schema()
+            tool
+            for tool in self._registry.to_openrouter_schema()
             if tool["function"]["name"] in allowed_tools
         ]
         self._filtered_schema_cache[cache_key] = filtered
@@ -289,51 +280,16 @@ class LLMService:
 
     def _record_tool_calls_intent(self, user_id: int, tool_calls: list[ToolCall]) -> None:
         self._conversations.add_message(
-            user_id, Message(role=Role.ASSISTANT, content="", tool_calls=self._format_tool_calls(tool_calls))
+            user_id,
+            Message(
+                role=Role.ASSISTANT,
+                content="",
+                tool_calls=self._tool_executor.format_tool_calls(tool_calls),
+            ),
         )
-
-    @staticmethod
-    def _format_tool_calls(tool_calls: list[ToolCall]) -> list[dict[str, Any]]:
-        return [
-            {
-                "id": tc.id,
-                "type": "function",
-                "function": {"name": tc.name, "arguments": tc.arguments},
-            }
-            for tc in tool_calls
-        ]
-
-    async def _emit_metric(
-        self,
-        *,
-        model: str,
-        t_start: float,
-        t_first_token: float | None,
-        usage: TokenUsage | None,
-        tool_names: list[str],
-        error_text: str,
-    ) -> None:
-        """Record a request metric. Fire-and-forget — never breaks a response."""
-        if self._metrics_store is None:
-            return
-        try:
-            t_end = time.monotonic()
-            metric = RequestMetric(
-                model=model,
-                tokens_in=usage.prompt_tokens if usage else 0,
-                tokens_out=usage.completion_tokens if usage else 0,
-                cost_usd=usage.cost if usage else None,
-                latency_ms=int((t_end - t_start) * 1000),
-                ttfb_ms=int((t_first_token - t_start) * 1000) if t_first_token else 0,
-                tool_names=",".join(tool_names),
-                is_error=bool(error_text),
-                error_text=error_text,
-            )
-            await self._metrics_store.record(metric)
-        except Exception:
-            logger.warning("Failed to emit request metric", exc_info=True)
 
     def _record_tool_result(self, user_id: int, result: ToolResult) -> None:
         self._conversations.add_message(
-            user_id, Message(role=Role.TOOL, content=result.content, tool_call_id=result.tool_call_id)
+            user_id,
+            Message(role=Role.TOOL, content=result.content, tool_call_id=result.tool_call_id),
         )

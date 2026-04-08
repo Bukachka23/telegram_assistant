@@ -1,5 +1,4 @@
 import json
-import operator
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -101,14 +100,14 @@ def accumulate_tool_calls(tc_chunks: list[dict], acc: dict[int, dict]) -> None:
 
 
 def build_tool_calls(acc: dict[int, dict]) -> list[ToolCall]:
-    """Convert accumulated tool call chunks into ToolCall objects."""
+    """Convert accumulated tool call chunks into ToolCall objects in provider order."""
     return [
         ToolCall(
             id=tc["id"],
             name=tc["name"],
             arguments=tc["arguments"],
         )
-        for tc in sorted(acc.values(), key=operator.itemgetter("id"))
+        for _, tc in sorted(acc.items())
     ]
 
 

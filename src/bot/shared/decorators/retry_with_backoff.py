@@ -3,7 +3,8 @@ import functools
 from collections.abc import Awaitable, Callable
 from typing import cast
 
-from bot.config.constants import BACKOFF_MULTIPLIER, BASE_DELAY_SECONDS, MAX_ATTEMPTS, P, R
+from bot.config.constants import BACKOFF_MULTIPLIER, BASE_DELAY_SECONDS, MAX_ATTEMPTS
+from bot.shared.types import P, R
 
 
 async def _call_once(

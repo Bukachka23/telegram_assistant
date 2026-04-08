@@ -6,7 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from bot.services.monitors import MonitorService, MonitorStore
+from bot.infrastructure.storage.monitor_storage import MonitorStore
+from bot.services.monitors import MonitorService
 
 
 @pytest.fixture

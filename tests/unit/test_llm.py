@@ -11,7 +11,7 @@ from bot.domain.models import ToolCall
 from bot.infrastructure.openrouter.openrouter import OpenRouterClient, StreamDelta
 from bot.services.conversation import ConversationManager
 from bot.services.llm import LLMService
-from bot.shared.agents.registry import get_agent, get_default_agent
+from bot.config.agents import get_agent, get_default_agent
 from bot.tools.registry import ToolRegistry
 
 
@@ -95,7 +95,7 @@ async def test_simple_text_response_uses_default_agent_config(
     tool_names = {tool["function"]["name"] for tool in kwargs["tools"]}
     assert kwargs["temperature"] == get_default_agent().temperature
     assert kwargs["max_tokens"] == get_default_agent().max_tokens
-    assert kwargs["messages"][0]["content"] == get_default_agent().prompt
+    assert kwargs["messages"][0]["content"].endswith(get_default_agent().prompt)
     assert tool_names == {"search_vault", "fetch_messages"}
 
 
@@ -118,7 +118,7 @@ async def test_switched_agent_uses_own_prompt_settings_and_tool_filter(
     assert math_tutor is not None
     assert kwargs["temperature"] == math_tutor.temperature
     assert kwargs["max_tokens"] == math_tutor.max_tokens
-    assert kwargs["messages"][0]["content"] == math_tutor.prompt
+    assert kwargs["messages"][0]["content"].endswith(math_tutor.prompt)
     assert kwargs["tools"] is None
 
 
@@ -139,7 +139,7 @@ async def test_unknown_active_agent_falls_back_to_default_config(
     _, kwargs = mock_client.stream_completion.call_args
     assert kwargs["temperature"] == get_default_agent().temperature
     assert kwargs["max_tokens"] == get_default_agent().max_tokens
-    assert kwargs["messages"][0]["content"] == get_default_agent().prompt
+    assert kwargs["messages"][0]["content"].endswith(get_default_agent().prompt)
 
 
 @pytest.mark.asyncio
@@ -212,6 +212,59 @@ async def test_async_tool_execution(
     chunks = [chunk async for chunk in llm_service.stream_response(1, "do async")]
 
     assert chunks == ["done"]
+
+
+@pytest.mark.asyncio
+async def test_tool_results_follow_original_call_order_not_completion_order(
+    llm_service: LLMService,
+    mock_client: Any,
+    conversations: ConversationManager,
+) -> None:
+    async def mock_executor(*, channel: str) -> str:
+        if channel == "@slow":
+            await asyncio.sleep(0.01)
+            return "slow result"
+        await asyncio.sleep(0)
+        return "fast result"
+
+    llm_service.register_async_tool("fetch_messages", mock_executor)
+
+    call_count = 0
+
+    def make_stream(*args, **kwargs):
+        del args, kwargs
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return _async_iter([
+                StreamDelta(
+                    tool_calls=[
+                        ToolCall(
+                            id="call_1",
+                            name="fetch_messages",
+                            arguments=json.dumps({"channel": "@slow"}),
+                        ),
+                        ToolCall(
+                            id="call_2",
+                            name="fetch_messages",
+                            arguments=json.dumps({"channel": "@fast"}),
+                        ),
+                    ]
+                )
+            ])
+        return _async_iter([StreamDelta(text="done")])
+
+    mock_client.stream_completion = MagicMock(side_effect=make_stream)
+
+    chunks = [chunk async for chunk in llm_service.stream_response(1, "do ordered async")]
+
+    assert chunks == ["done"]
+    tool_messages = [
+        message for message in conversations.get_messages_for_api(1)
+        if message["role"] == "tool"
+    ]
+    assert [message["tool_call_id"] for message in tool_messages] == ["call_1", "call_2"]
+    assert [message["content"] for message in tool_messages] == ["slow result", "fast result"]
 
 
 @pytest.mark.asyncio

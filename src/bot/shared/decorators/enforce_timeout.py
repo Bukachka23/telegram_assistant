@@ -2,7 +2,7 @@ import asyncio
 import functools
 from collections.abc import Awaitable, Callable
 
-from bot.config.constants import P, R
+from bot.shared.types import P, R
 
 
 def enforce_timeout(

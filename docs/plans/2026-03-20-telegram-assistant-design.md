@@ -167,7 +167,7 @@ llm:
   temperature: 0.7
 
 vault:
-  path: "/home/pi/obsidian-vault"
+  path: "/home/.pi/obsidian-vault"
   default_folder: "notes"
 
 conversation:

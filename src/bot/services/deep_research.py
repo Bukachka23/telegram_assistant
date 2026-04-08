@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 from bot.config.constants import DEEP_RESEARCH_MAX_CYCLES, JUDGE_MAX_TOKENS, SUMMARY_LIMIT
 from bot.domain.models import JudgeDecision, ResearchState
+from bot.domain.protocols import DeepResearchServiceProtocol, ProgressCallback
 from bot.prompts import (
     DEEP_RESEARCH_CYCLE_SYSTEM_PROMPT,
     DEEP_RESEARCH_JUDGE_SYSTEM_PROMPT,
@@ -14,16 +14,15 @@ from bot.prompts import (
     build_judge_prompt,
     build_synthesis_prompt,
 )
-from bot.shared.agents.registry import get_agent, get_default_agent
+from bot.config.agents import get_agent, get_default_agent
 
 if TYPE_CHECKING:
     from bot.domain.protocols import LLMServiceProtocol
 
-ProgressCallback = Callable[[str], Awaitable[None]]
 _RE_WHITESPACE = re.compile(r"\s+")
 
 
-class DeepResearchService:
+class DeepResearchService(DeepResearchServiceProtocol):
     """Runs an auto research-style multi-cycle research loop."""
 
     def __init__(self, llm: LLMServiceProtocol) -> None:

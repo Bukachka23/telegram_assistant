@@ -1,7 +1,7 @@
 """Tests for built-in agent registry."""
 
 from bot.prompts import EXPLANATORY_PROMPT, MATH_TUTOR_PROMPT, RESEARCHER_PROMPT, SYSTEM_PROMPT
-from bot.shared.agents.registry import (
+from bot.config.agents import (
     DEFAULT_AGENT_NAME,
     get_agent,
     get_agent_by_command,

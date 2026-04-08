@@ -4,7 +4,7 @@ from pathlib import Path
 
 from bot.config.constants import MAX_RESULTS
 from bot.domain.exceptions import VaultError
-from bot.domain.models import Note
+from bot.domain.models.vault import Note
 
 logger = logging.getLogger(__name__)
 

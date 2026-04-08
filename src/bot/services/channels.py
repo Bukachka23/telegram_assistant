@@ -19,18 +19,6 @@ from bot.shared.decorators import enforce_timeout, retry_with_backoff
 logger = logging.getLogger(__name__)
 
 
-from bot.domain.models import PersistedMonitor  # noqa: E402 — after logger
-
-
-def _find_matching_monitor(
-    monitors: list[PersistedMonitor], chat_id: int, text: str
-) -> PersistedMonitor | None:
-    """Return the first monitor whose chat_id and keywords match *text*."""
-    return next(
-        (m for m in monitors if m.chat_id == chat_id and m.matches(text)),
-        None,
-    )
-
 
 class ChannelService:
     """Fetches and searches messages from channels accessible to the userbot."""

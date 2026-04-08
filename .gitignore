@@ -13,3 +13,6 @@ build/
 .vscode/
 *.db
 data/
+.code-review-graph
+.pi
+docs

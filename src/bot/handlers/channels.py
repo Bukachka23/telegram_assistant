@@ -7,18 +7,15 @@ from bot.config.constants import CHANNEL_MAX_LENGTH_MESSAGE
 from bot.domain.models import PersistedMonitor
 from bot.services.monitors import MonitorService
 
+logger = logging.getLogger(__name__)
 
-def _find_matching_monitor(
-    monitors: Sequence[PersistedMonitor], chat_id: int, text: str
-) -> PersistedMonitor | None:
+
+def _find_matching_monitor(monitors: Sequence[PersistedMonitor], chat_id: int, text: str) -> PersistedMonitor | None:
     """Return the first monitor whose chat_id and keywords match *text*."""
     return next(
         (m for m in monitors if m.chat_id == chat_id and m.matches(text)),
         None,
     )
-
-
-logger = logging.getLogger(__name__)
 
 
 def _build_notification(*, text: str, monitor: PersistedMonitor, chat_title: str) -> str:

@@ -2,7 +2,7 @@ import functools
 from collections.abc import Awaitable, Callable, Sequence
 from typing import cast
 
-from bot.config.constants import P, R
+from bot.shared.types import P, R
 
 
 async def _try_call(

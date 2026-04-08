@@ -3,7 +3,7 @@
 import pytest
 
 from bot.services.deep_research import DeepResearchService
-from bot.shared.agents.registry import get_agent
+from bot.config.agents import get_agent
 
 
 class FakeLLMService:

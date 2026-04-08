@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 
 import pytest
 
-from bot.services.memory import MemoryStore
+from bot.infrastructure.storage.memory_storage import MemoryStore
 from bot.tools.memory_tools import register_memory_tools
 from bot.tools.registry import ToolRegistry
 

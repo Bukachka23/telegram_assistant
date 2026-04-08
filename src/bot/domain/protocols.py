@@ -1,13 +1,29 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Sequence
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
+
+from bot.config.constants import DEEP_RESEARCH_MAX_CYCLES
 
 if TYPE_CHECKING:
-    from bot.domain.models import ForwardedChatLike, MonitorDisplay, PersistedMonitor
+    from bot.domain.models import PersistedMonitor
 
 ResolvedChannel = str | int
 MessageFetcher = Callable[[ResolvedChannel, int, str | None], Awaitable[list]]
+ProgressCallback = Callable[[str], Awaitable[None]]
+
+
+class MonitorDisplay(Protocol):
+    chat_id: int
+    username: str
+    title: str
+    keywords: list[str]
+
+
+class ForwardedChatLike(Protocol):
+    id: int
+    title: str
+    username: str | None
 
 
 class TelegramEntity(Protocol):
@@ -16,9 +32,6 @@ class TelegramEntity(Protocol):
     id: int
     username: str | None
     title: str | None
-
-
-ProgressCallback = Callable[[str], Awaitable[None]]
 
 
 class MonitorResolver(Protocol):
@@ -60,7 +73,7 @@ class DeepResearchServiceProtocol(Protocol):
         query: str,
         model: str,
         on_progress: ProgressCallback | None = None,
-        max_cycles: int = 3,
+        max_cycles: int = DEEP_RESEARCH_MAX_CYCLES,
     ) -> str: ...
 
 
@@ -70,7 +83,7 @@ class LLMServiceProtocol(Protocol):
     async def complete_side_context(
         self,
         *,
-        messages: list[dict],
+        messages: list[dict[str, Any]],
         model: str,
         allowed_tools: list[str] | None,
         temperature: float | None,

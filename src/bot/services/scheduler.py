@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from datetime import timedelta, timezone
 
 from bot.config.constants import TICK_SECONDS, TZ_OFFSET_HOURS
-from bot.infrastructure.scheduler_core import PersistentScheduler
+from bot.infrastructure.scheduler import PersistentScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class BotSchedulerService:
         message = str(job.get("message", "")).strip()
         # Show only the user-facing message — never expose the internal job name.
         # Fallback to a generic header when the job has no message.
-        text = f"⏰ {message}" if message else "⏰ Reminder"
+        text = f"⏰ Reminder: {message}" if message else "⏰ Reminder"
 
         asyncio.run_coroutine_threadsafe(self._safe_send(send_fn, text), loop)
 

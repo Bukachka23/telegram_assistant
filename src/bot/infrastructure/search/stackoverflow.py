@@ -2,12 +2,14 @@ import logging
 
 import httpx
 
-from bot.config.constants import DEFAULT_MAX_RESULTS, REQUEST_TIMEOUT, STACKOVERFLOW_API
+from bot.config.constants import DEFAULT_MAX_RESULTS, REQUEST_TIMEOUT
+from bot.domain.protocols import SearchClientProtocol
+from bot.infrastructure.search.configs import STACKOVERFLOW_API
 
 logger = logging.getLogger(__name__)
 
 
-class StackOverflowSearchClient:
+class StackOverflowSearchClient(SearchClientProtocol):
     """Async client for Stack Overflow public search API."""
 
     def __init__(self, *, timeout: float = REQUEST_TIMEOUT) -> None:

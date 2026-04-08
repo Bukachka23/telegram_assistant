@@ -2,13 +2,15 @@ import logging
 
 import httpx
 
-from bot.config.constants import DEFAULT_MAX_RESULTS, REQUEST_TIMEOUT, TAVILY_SEARCH_URL
+from bot.config.constants import DEFAULT_MAX_RESULTS, REQUEST_TIMEOUT
 from bot.domain.exceptions import WebSearchError
+from bot.domain.protocols import SearchClientProtocol
+from bot.infrastructure.search.configs import TAVILY_SEARCH_URL
 
 logger = logging.getLogger(__name__)
 
 
-class TavilySearchClient:
+class TavilySearchClient(SearchClientProtocol):
     """Async client for Tavily Search API."""
 
     def __init__(self, api_key: str, *, timeout: float = REQUEST_TIMEOUT) -> None:

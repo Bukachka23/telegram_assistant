@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 from bot.config.constants import MAX_HISTORY, SESSION_TIMEOUT_MINUTES
 from bot.domain.models import Conversation, Message, Role
-from bot.shared.agents.registry import get_default_agent
+from bot.config.agents import get_default_agent
 
 logger = logging.getLogger(__name__)
 

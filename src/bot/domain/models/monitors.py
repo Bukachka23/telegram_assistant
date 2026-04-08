@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 
+from bot.domain.protocols import MonitorDisplay
+
 
 @dataclass(frozen=True)
 class ChannelFilter:
@@ -16,7 +18,7 @@ class ChannelFilter:
 
 
 @dataclass(frozen=True)
-class PersistedMonitor:
+class PersistedMonitor(MonitorDisplay):
     """A persisted channel monitor keyed by Telegram chat ID."""
 
     owner_user_id: int

@@ -7,7 +7,7 @@ import pytest
 from bot.domain.exceptions import LLMError
 from bot.handlers.commands import setup_commands
 from bot.services.conversation import ConversationManager
-from bot.shared.agents.registry import DEFAULT_AGENT_NAME
+from bot.config.agents import DEFAULT_AGENT_NAME
 
 
 class FakeMessage:

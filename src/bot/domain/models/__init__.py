@@ -6,11 +6,7 @@ from bot.domain.models.config import (
     ChannelMonitorEntry,
     ChannelsConfig,
     ConversationConfig,
-    ForwardedChat,
-    ForwardedChatLike,
     LLMConfig,
-    MonitorDisplay,
-    Note,
     StreamingConfig,
     TelegraphConfig,
     VaultConfig,
@@ -19,6 +15,8 @@ from bot.domain.models.metrics import RequestMetric
 from bot.domain.models.monitors import ChannelFilter, PersistedMonitor
 from bot.domain.models.research import JudgeDecision, ResearchState
 from bot.domain.models.tools import StreamDelta, TokenUsage, Tool, ToolCall, ToolResult
+from bot.domain.models.vault import Note
+from bot.domain.protocols import ForwardedChatLike, MonitorDisplay
 
 __all__ = [
     "AgentProfile",
@@ -27,7 +25,6 @@ __all__ = [
     "ChannelsConfig",
     "Conversation",
     "ConversationConfig",
-    "ForwardedChat",
     "ForwardedChatLike",
     "JudgeDecision",
     "LLMConfig",
@@ -39,9 +36,9 @@ __all__ = [
     "ResearchState",
     "Role",
     "StreamDelta",
-    "TokenUsage",
     "StreamingConfig",
     "TelegraphConfig",
+    "TokenUsage",
     "Tool",
     "ToolCall",
     "ToolResult",

@@ -5,12 +5,12 @@ import httpx
 
 from bot.config.constants import (
     DEFAULT_MAX_RESULTS,
-    REDDIT_API_BASE,
     REDDIT_CACHE_TTL_SECONDS,
     REDDIT_RATE_LIMIT_STATUS,
-    REDDIT_USER_AGENT,
     REQUEST_TIMEOUT,
 )
+from bot.domain.protocols import SearchClientProtocol
+from bot.infrastructure.search.configs import REDDIT_API_BASE, REDDIT_USER_AGENT
 from bot.shared.decorators import cache_with_ttl
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ _UNAVAILABLE_MSG = (
 )
 
 
-class RedditSearchClient:
+class RedditSearchClient(SearchClientProtocol):
     """Async client for the Reddit public JSON search API (no auth required)."""
 
     def __init__(self, *, timeout: float = REQUEST_TIMEOUT) -> None:

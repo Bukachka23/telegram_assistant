@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable
 
 from pydantic import TypeAdapter, ValidationError
 
-from bot.config.constants import P, R
+from bot.shared.types import P, R
 
 
 def validate_output() -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:

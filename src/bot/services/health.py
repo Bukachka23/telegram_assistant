@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING
 from bot.domain.models.health import HealthReport
 
 if TYPE_CHECKING:
+    from bot.infrastructure.storage.memory_storage import MemoryStore
     from bot.infrastructure.storage.metrics_storage import MetricsStore
     from bot.infrastructure.storage.monitor_storage import MonitorStore
     from bot.services.conversation import ConversationManager
-    from bot.services.memory import MemoryStore
     from bot.services.vault import VaultService
 
 

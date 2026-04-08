@@ -1,22 +1,19 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
-from bot.config.constants import (
-    ARXIV_KEYWORDS,
-    DEFAULT_MAX_RESULTS,
-    GITHUB_KEYWORDS,
-    HUGGINGFACE_KEYWORDS,
-    REDDIT_KEYWORDS,
-    STACKOVERFLOW_KEYWORDS,
-    WIKIPEDIA_KEYWORDS,
-)
+from bot.config.constants import DEFAULT_MAX_RESULTS
+from bot.infrastructure.search.configs import GITHUB_KEYWORDS, HUGGINGFACE_KEYWORDS, ARXIV_KEYWORDS, \
+    STACKOVERFLOW_KEYWORDS, WIKIPEDIA_KEYWORDS, REDDIT_KEYWORDS
 
 if TYPE_CHECKING:
     from bot.domain.protocols import SearchClientProtocol
 
 logger = logging.getLogger(__name__)
+
+SearchHandler = Callable[[str, int], Awaitable[str]]
 
 
 class WebSearchRouter:
@@ -58,7 +55,7 @@ class WebSearchRouter:
         resolved = self._resolve_source(query, source)
         logger.info("Web search: source=%s (resolved from %s) query='%s'", resolved, source, query[:80])
 
-        dispatch = {
+        dispatch: dict[str, SearchHandler] = {
             "github": self._search_github,
             "huggingface": self._search_huggingface,
             "stackoverflow": self._search_stackoverflow,
@@ -66,7 +63,7 @@ class WebSearchRouter:
             "wikipedia": self._search_wikipedia,
             "reddit": self._search_reddit,
         }
-        handler = dispatch.get(resolved, self._search_tavily)
+        handler: SearchHandler = dispatch.get(resolved, self._search_tavily)
         return await handler(query, max_results)
 
     @staticmethod

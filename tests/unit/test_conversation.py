@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 from bot.domain.models import Message, Role
 from bot.services.conversation import ConversationManager
-from bot.shared.agents.registry import DEFAULT_AGENT_NAME, get_default_agent
+from bot.config.agents import DEFAULT_AGENT_NAME, get_default_agent
 
 
 def _make_manager(

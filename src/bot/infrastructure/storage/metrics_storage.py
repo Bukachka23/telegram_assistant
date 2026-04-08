@@ -1,5 +1,3 @@
-"""SQLite-backed storage for request metrics."""
-
 import logging
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -7,58 +5,14 @@ from pathlib import Path
 import aiosqlite
 
 from bot.domain.models.metrics import RequestMetric
+from bot.infrastructure.storage.schemas import (
+    METRIC_INSERT,
+    METRIC_QUERY_AGGREGATED,
+    METRIC_QUERY_TOOL_NAMES,
+    METRIC_SCHEMA,
+)
 
 logger = logging.getLogger(__name__)
-
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS request_metrics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    model TEXT NOT NULL,
-    tokens_in INTEGER NOT NULL DEFAULT 0,
-    tokens_out INTEGER NOT NULL DEFAULT 0,
-    cost_usd REAL,
-    latency_ms INTEGER NOT NULL DEFAULT 0,
-    ttfb_ms INTEGER NOT NULL DEFAULT 0,
-    tool_names TEXT NOT NULL DEFAULT '',
-    is_error INTEGER NOT NULL DEFAULT 0,
-    error_text TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_request_metrics_created_at
-ON request_metrics(created_at);
-
-CREATE INDEX IF NOT EXISTS idx_request_metrics_model
-ON request_metrics(model);
-"""
-
-_INSERT = """
-INSERT INTO request_metrics
-    (model, tokens_in, tokens_out, cost_usd, latency_ms, ttfb_ms,
-     tool_names, is_error, error_text, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-"""
-
-_QUERY_AGGREGATED = """
-SELECT
-    model,
-    COUNT(*) as requests,
-    CAST(AVG(tokens_in) AS INTEGER) as avg_tokens_in,
-    CAST(AVG(tokens_out) AS INTEGER) as avg_tokens_out,
-    AVG(latency_ms) as avg_latency_ms,
-    AVG(ttfb_ms) as avg_ttfb_ms,
-    SUM(cost_usd) as total_cost,
-    SUM(is_error) as error_count
-FROM request_metrics
-{where}
-GROUP BY model
-ORDER BY requests DESC
-"""
-
-_QUERY_TOOL_NAMES = """
-SELECT tool_names FROM request_metrics
-WHERE tool_names != '' {and_where}
-"""
 
 
 class MetricsStore:
@@ -83,7 +37,7 @@ class MetricsStore:
             self._db = await aiosqlite.connect(db_path)
             self._db.row_factory = aiosqlite.Row
         db = self._get_db()
-        await db.executescript(_SCHEMA)
+        await db.executescript(METRIC_SCHEMA)
         await db.commit()
         count = await self.count()
         logger.info("Metrics store ready: %d records in %s", count, self._db_path)
@@ -92,7 +46,7 @@ class MetricsStore:
         """Insert a metric row. Errors are logged and swallowed."""
         try:
             db = self._get_db()
-            await db.execute(_INSERT, (
+            await db.execute(METRIC_INSERT, (
                 metric.model,
                 metric.tokens_in,
                 metric.tokens_out,
@@ -113,10 +67,10 @@ class MetricsStore:
         db = self._get_db()
         if days > 0:
             cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
-            sql = _QUERY_AGGREGATED.format(where="WHERE created_at >= ?")
+            sql = METRIC_QUERY_AGGREGATED.format(where="WHERE created_at >= ?")
             cursor = await db.execute(sql, (cutoff,))
         else:
-            sql = _QUERY_AGGREGATED.format(where="")
+            sql = METRIC_QUERY_AGGREGATED.format(where="")
             cursor = await db.execute(sql)
         return await cursor.fetchall()
 
@@ -125,10 +79,10 @@ class MetricsStore:
         db = self._get_db()
         if days > 0:
             cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
-            sql = _QUERY_TOOL_NAMES.format(and_where="AND created_at >= ?")
+            sql = METRIC_QUERY_TOOL_NAMES.format(and_where="AND created_at >= ?")
             cursor = await db.execute(sql, (cutoff,))
         else:
-            sql = _QUERY_TOOL_NAMES.format(and_where="")
+            sql = METRIC_QUERY_TOOL_NAMES.format(and_where="")
             cursor = await db.execute(sql)
         rows = await cursor.fetchall()
         return [row["tool_names"] for row in rows]

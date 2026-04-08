@@ -1,20 +1,4 @@
-from dataclasses import dataclass
-from typing import Protocol
-
 from pydantic import BaseModel, Field
-
-
-class MonitorDisplay(Protocol):
-    chat_id: int
-    username: str
-    title: str
-    keywords: list[str]
-
-
-class ForwardedChatLike(Protocol):
-    id: int
-    title: str
-    username: str | None
 
 
 class LLMConfig(BaseModel):
@@ -24,7 +8,7 @@ class LLMConfig(BaseModel):
 
 
 class VaultConfig(BaseModel):
-    path: str = "/home/pi/obsidian-vault"
+    path: str = "/home/.pi/obsidian-vault"
     default_folder: str = "notes"
 
 
@@ -57,22 +41,3 @@ class TelegraphConfig(BaseModel):
     threshold_chars: int = 8000
     author_name: str = "Telegram Assistant"
     author_url: str = ""
-
-
-class ForwardedChat(Protocol):
-    id: int
-    title: str
-    username: str | None
-
-
-@dataclass(frozen=True)
-class Note:
-    """An Obsidian vault note."""
-
-    path: str
-    content: str
-    name: str = ""
-
-    def __post_init__(self) -> None:
-        if not self.name:
-            object.__setattr__(self, "name", self.path.rsplit("/", 1)[-1])

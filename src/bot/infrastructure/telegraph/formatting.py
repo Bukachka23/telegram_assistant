@@ -1,5 +1,3 @@
-"""Convert Markdown to Telegra.ph Node format."""
-
 from html.parser import HTMLParser
 from typing import Any
 

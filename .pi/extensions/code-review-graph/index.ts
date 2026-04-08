@@ -1,4 +1,4 @@
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@mariozechner/.pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import * as path from "node:path";
 import * as url from "node:url";
@@ -172,7 +172,7 @@ export default function (pi: ExtensionAPI) {
 
   // ── Convenience command ─────────────────────────────────────────────────
   pi.registerCommand("crg-build", {
-    description: "Build or refresh the code-review-graph for this project",
+    description: "Build or refresh the .code-review-graph for this project",
     handler: async (_args, ctx) => {
       ctx.ui.notify("Building code graph…", "info");
       const res = await pi.exec("python3", [BRIDGE, JSON.stringify({ tool: "build_or_update_graph", args: { repo_path: ctx.cwd } })], {});

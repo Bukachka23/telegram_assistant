@@ -1,3 +1,4 @@
+from bot.config.constants import ASYNC_TOOL_PREFIX
 from bot.tools.registry import ToolRegistry
 
 
@@ -27,7 +28,7 @@ def register_channel_tools(registry: ToolRegistry) -> None:
             },
             "required": ["channel"],
         },
-        fn=lambda **_: "ASYNC_TOOL:fetch_messages",
+        fn=lambda **_: f"{ASYNC_TOOL_PREFIX}fetch_messages",
     )
 
     registry.register(
@@ -58,5 +59,5 @@ def register_channel_tools(registry: ToolRegistry) -> None:
             },
             "required": ["channel", "query"],
         },
-        fn=lambda **_: "ASYNC_TOOL:search_channel",
+        fn=lambda **_: f"{ASYNC_TOOL_PREFIX}search_channel",
     )

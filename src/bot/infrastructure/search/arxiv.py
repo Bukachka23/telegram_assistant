@@ -3,7 +3,9 @@ import re
 
 import httpx
 
-from bot.config.constants import ARXIV_API, DEFAULT_MAX_RESULTS, MAX_ARXIV_AUTHORS, REQUEST_TIMEOUT
+from bot.config.constants import DEFAULT_MAX_RESULTS, MAX_ARXIV_AUTHORS, REQUEST_TIMEOUT
+from bot.domain.protocols import SearchClientProtocol
+from bot.infrastructure.search.configs import ARXIV_API
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +19,7 @@ _TAG_PATTERNS: dict[str, re.Pattern[str]] = {
 }
 
 
-class ArxivSearchClient:
+class ArxivSearchClient(SearchClientProtocol):
     """Async client for arXiv Atom feed search API."""
 
     def __init__(self, *, timeout: float = REQUEST_TIMEOUT) -> None:
